@@ -6,7 +6,7 @@ int main(int, char**) {
 
     std::vector<ShellParams> parameterList;
     BatchGen massCalcer;
-
+   //test
     //Push parameters to the parameterList
 
     massCalcer.calculateAll(parameterList);
