@@ -13,42 +13,38 @@ for filename in os.listdir(os.getcwd()):
         continue
     fileNames.append(filename[:-4])
     with open(os.path.join(os.getcwd(), filename), 'r') as f:
+        currentSurface = []
         currentFile = f.readlines()
-        curvesStrs = [line[:-2] for line in currentFile]
-        curves = []
+        curvesStrs = currentFile[0].split("|")
         for curveString in curvesStrs:
-            pointStrs = curveString.split(" ")
-            curve = []
-            for pointString in pointStrs:
-                point = [float(value) for value in pointString.split(",")]
-                curve.append(point)
-            curves.append(curve)
-    surfaces.append(curves)
-
+            pointData = curveString.split(":")
+            pointString = pointData[0].split(",")
+            neighboursString = pointData[1].split(",")
+            point = [float(coord) for coord in pointString]
+            neighbours = [int(index) for index in neighboursString]
+            currentSurface.append([point, neighbours])
+        surfaces.append(currentSurface)
 os.chdir("..")
 current = os.getcwd()
 os.chdir(current + "\\OutputSurfaceMeshes")
 for surface, fileName in zip(surfaces, fileNames):
-    count += 1
-    resolution = len(surface[0])
     listVertices = []
-    for curve in surface:
-        for point in curve:
-            listVertices.append(point)
     listTriangles = []
-    for curveIndex in range(len(surface)-1):
-        startPoint = resolution*curveIndex
-        for pointIndex in range(resolution-1):
-            listTriangles.append([startPoint + pointIndex, startPoint + pointIndex + resolution + 1,startPoint + pointIndex + 1])
-            listTriangles.append([startPoint + pointIndex, startPoint + pointIndex + resolution, startPoint + pointIndex + resolution+1])
-        listTriangles.append([startPoint + resolution - 1,  startPoint + resolution,startPoint])
-        listTriangles.append([startPoint + resolution - 1, startPoint + 2*resolution - 1, startPoint + resolution])
+    for i in range(len(surface)):
+        listVertices.append(surface[i][0])
+        for neighbour in surface[i][1]:
+            if neighbour > i:
+                for secondNeighbour in surface[i][1]:
+                    if secondNeighbour > i and secondNeighbour > neighbour:
+                        if secondNeighbour in surface[neighbour][1]:
+                            listTriangles.append([i,neighbour, secondNeighbour])
     triangles = np.array(listTriangles)
     vertices = np.array(listVertices)
-    lettuceMesh = mesh.Mesh(np.zeros(triangles.shape[0], dtype=mesh.Mesh.dtype))
+    surfaceMesh = mesh.Mesh(np.zeros(triangles.shape[0], dtype=mesh.Mesh.dtype))
     for i, f in enumerate(triangles):
         for j in range(3):
-            lettuceMesh.vectors[i][j] = vertices[f[j],:]
-    lettuceMesh.save(fileName + '.stl')
+            surfaceMesh.vectors[i][j] = vertices[f[j],:]
+    surfaceMesh.save(fileName + '.stl')
+    count+= 1
 
 print("Done, " , count , " surfaces converted.")

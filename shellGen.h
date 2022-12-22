@@ -5,6 +5,7 @@
 #include <string>
 #include "shellParams.h"
 #include "shellNaming.h"
+#include "radialSurface.h"
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
@@ -25,6 +26,5 @@ class ShellGen {
 
     private:
         struct ShellParams& m_parameters;
-        std::vector<std::vector<Vector3d>> m_surface;
-        VectorXd m_prevSol;
+        RadialSurface m_surface;
 };

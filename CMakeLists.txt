@@ -14,6 +14,8 @@ add_library(LibsModule
      shellParams.h
      shellNaming.cpp
      batchGen.cpp
+     surface.cpp
+     radialSurface.cpp
      LBFGS.h
      LBFGSB.h
      LBFGSpp/Param.h
