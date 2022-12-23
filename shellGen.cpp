@@ -30,7 +30,7 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> tangents;
     double initialDist = 1;
     double radialDist = 1 + (curveCount-1) * m_parameters.extensionLength;
-    int nextRingSize = int(m_parameters.resolution * radialDist);
+    int nextRingSize = int(M_1_PI/(std::asin(1/radialDist * std::sin(M_1_PI/m_parameters.resolution))));
     if (curveCount == 1) {
         for (Vector3d firstCurvePoint : m_surface.getCurve(0)){
             normals.push_back(firstCurvePoint);
@@ -47,7 +47,6 @@ bool ShellGen::expandCurve() {
     double angleChange = 2 * M_PI / nextRingSize;
     for (int i =0; i<nextRingSize;i++){
             Vector3d nextTangent(-std::sin(angleChange * i), std::cos(angleChange *i), 0);
-            //Vector3d nextTangent = m_surface[curveCount-1][correctIndex(i+1)] - m_surface[curveCount-1][correctIndex(i-1)];
             nextTangent.normalize();
             Vector3d nextBinormal(normals[i][1]*nextTangent[2] - normals[i][2]*nextTangent[1] ,normals[i][2]*nextTangent[0] - normals[i][0]*nextTangent[2], normals[i][0]*nextTangent[1] - normals[i][1]*nextTangent[0]);
             //nextBinormal.normalize();
@@ -61,14 +60,14 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> extendedPrevCurve;
     for (int i = 0; i < nextRingSize; i++) {
         double pointParameter = M_2_PI * double(i)/double(nextRingSize);
-        Vector3d circlePoint(std::cos(pointParameter), std::sin(pointParameter), 0);
-        extendedPrevCurve.push_back((radialDist+m_parameters.extensionLength) * circlePoint);
+        Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
+        extendedPrevCurve.push_back(nextPoint.normalized() * radialDist);
     }
     EnergyFunction energyFunctional(extendedPrevCurve, normals, binormals, m_parameters, radialDist);
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 10;
     LBFGSpp::LBFGSSolver<double> solver(param);
-    VectorXd input = 0 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
     double energy;
     try {
         // int iterCount = solver.minimize(energyFunctional, input, energy);
@@ -88,7 +87,7 @@ bool ShellGen::expandCurve() {
             std::cout << "Failed from nan input." << std::endl;
             return false;
         }
-        nextCurve.push_back(extendedPrevCurve[i]);
+        nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + input[i] * binormals[i]);
     }
     if (success) {
         m_surface.addCurve(nextCurve);
