@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include <Eigen/core>
+#include <eigen3/Eigen/Core>
 #include <string>
 #include "shellParams.h"
 #include "shellNaming.h"

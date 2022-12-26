@@ -5,7 +5,7 @@
 #define LBFGSPP_CAUCHY_H
 
 #include <vector>
-#include <Eigen/core>
+#include <eigen3/Eigen/Core>
 #include "BFGSMat.h"
 
 /// \cond

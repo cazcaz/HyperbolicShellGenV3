@@ -5,7 +5,7 @@
 #ifndef LBFGSPP_LINE_SEARCH_BRACKETING_H
 #define LBFGSPP_LINE_SEARCH_BRACKETING_H
 
-#include <Eigen/core>
+#include <eigen3/Eigen/Core>
 #include <stdexcept>  // std::runtime_error
 
 namespace LBFGSpp {

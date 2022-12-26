@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Eigen/core>
+#include <eigen3/Eigen/Core>
 #include <vector>
 #include <iostream>
 #include <unordered_map>

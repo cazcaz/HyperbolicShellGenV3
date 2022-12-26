@@ -137,7 +137,7 @@ void ShellGen::printSurface() {
     }
     std::string path = "/../OutputSurfaceTxts/";
     std::ofstream open(path);
-    std::ofstream surfaceFile("..\\OutputSurfaceTxts\\" + fileName + ".txt");
+    std::ofstream surfaceFile("../OutputSurfaceTxts/" + fileName + ".txt");
 
     // if (needsCompress) {
     //     std::vector<int> radialIndices;

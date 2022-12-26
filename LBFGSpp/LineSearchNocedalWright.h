@@ -5,7 +5,7 @@
 #ifndef LBFGSPP_LINE_SEARCH_NOCEDAL_WRIGHT_H
 #define LBFGSPP_LINE_SEARCH_NOCEDAL_WRIGHT_H
 
-#include <Eigen/core>
+#include <eigen3/Eigen/Core>
 #include <stdexcept>
 
 namespace LBFGSpp {

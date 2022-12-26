@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <stdexcept>
-#include <Eigen/core>
+#include <eigen3/Eigen/Core>
 
 /// \cond
 
