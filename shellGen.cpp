@@ -61,7 +61,7 @@ bool ShellGen::expandCurve() {
     for (int i = 0; i < nextRingSize; i++) {
         double pointParameter = M_2_PI * double(i)/double(nextRingSize);
         Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
-        extendedPrevCurve.push_back(nextPoint.normalized() * radialDist);
+        extendedPrevCurve.push_back(nextPoint);
     }
     EnergyFunction energyFunctional(extendedPrevCurve, normals, binormals, m_parameters, radialDist);
     LBFGSpp::LBFGSParam<double> param;

@@ -7,7 +7,7 @@ fileNames = []
 current = os.getcwd()
 count = 0
 os.chdir("..")
-os.chdir(current + "\\OutputSurfaceTxts")
+os.chdir(current + "/OutputSurfaceTxts")
 for filename in os.listdir(os.getcwd()):
     if not filename.endswith('.txt'):
         continue
@@ -26,7 +26,7 @@ for filename in os.listdir(os.getcwd()):
         surfaces.append(currentSurface)
 os.chdir("..")
 current = os.getcwd()
-os.chdir(current + "\\OutputSurfaceMeshes")
+os.chdir(current + "/OutputSurfaceMeshes")
 for surface, fileName in zip(surfaces, fileNames):
     listVertices = []
     listTriangles = []

@@ -74,6 +74,16 @@ int RadialSurface::getCurveCount()
     return m_curveCount;
 }
 
+double RadialSurface::getRadialLength(double s)
+{
+    double lengthSum;
+    for (int i=0; i < m_curveCount - 1; i++) {
+        lengthSum += (getPoint(i+1, s) - getPoint(i, s)).norm();
+    }
+    return lengthSum;
+}
+
+
 int RadialSurface::curveStartIndex(int curveNum)
 {
     int curveStartIndex = 0;
