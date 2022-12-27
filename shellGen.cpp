@@ -37,7 +37,7 @@ bool ShellGen::expandCurve() {
         }
     } else {
         for (int i =0; i<nextRingSize;i++){
-            double pointParameter = M_2_PI * i/nextRingSize;
+            double pointParameter = 2 * M_PI * i/nextRingSize;
             Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
             nextPoint.normalize();
             normals.push_back(nextPoint);
@@ -59,23 +59,23 @@ bool ShellGen::expandCurve() {
     //minimsation time
     std::vector<Vector3d> extendedPrevCurve;
     for (int i = 0; i < nextRingSize; i++) {
-        double pointParameter = M_2_PI * double(i)/double(nextRingSize);
+        double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
         Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
         extendedPrevCurve.push_back(nextPoint);
     }
-    EnergyFunction energyFunctional(extendedPrevCurve, normals, binormals, m_parameters, radialDist);
+    EnergyFunction energyFunctional(m_surface, normals, binormals, m_parameters, radialDist);
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 10;
     LBFGSpp::LBFGSSolver<double> solver(param);
-    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0 * VectorXd::Random(nextRingSize);
     double energy;
     try {
-        // int iterCount = solver.minimize(energyFunctional, input, energy);
-        // if (iterCount == 200) {
-        //     m_parameters.extensionLength *= 0.5;
-        //     std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-        //     success = false;
-        // }
+        int iterCount = solver.minimize(energyFunctional, input, energy);
+        if (iterCount == 200) {
+            m_parameters.extensionLength *= 0.5;
+            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            success = false;
+        }
     } catch(...) {
         std::cout << "Failed from error in calcualtion." << std::endl;
         return false;

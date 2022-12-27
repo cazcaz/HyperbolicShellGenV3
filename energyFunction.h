@@ -3,13 +3,14 @@
 #include <eigen3/Eigen/Core>
 #include <vector>
 #include "shellParams.h"
+#include "radialSurface.h"
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 class EnergyFunction {
     public:
-        EnergyFunction(std::vector<Vector3d>& currentCurve, std::vector<Vector3d>& normals, std::vector<Vector3d>& binormals, ShellParams& parameters, double radialDist);
+        EnergyFunction(RadialSurface& surface, std::vector<Vector3d>& normals, std::vector<Vector3d>& binormals, ShellParams& parameters, double radialDist);
         ~EnergyFunction();
 
         double operator()(const VectorXd& inputs, VectorXd& derivatives);
@@ -24,7 +25,7 @@ class EnergyFunction {
         double bendingEnergy(Vector3d a, Vector3d b, Vector3d c);
         double bendingEnergyDeriv(Vector3d a, Vector3d b, Vector3d c, Vector3d da, Vector3d db, Vector3d dc);
     private:
-        std::vector<Vector3d> m_currentCurve;
+        RadialSurface m_surface;
         std::vector<Vector3d> m_normals;
         std::vector<Vector3d> m_binormals;
         struct ShellParams& m_parameters;

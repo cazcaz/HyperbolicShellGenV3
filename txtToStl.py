@@ -19,9 +19,9 @@ for filename in os.listdir(os.getcwd()):
         for curveString in curvesStrs:
             pointData = curveString.split(":")
             pointString = pointData[0].split(",")
-            neighboursString = pointData[1].split(",")
+            triangleStrings = pointData[1].split("~")
             point = [float(coord) for coord in pointString]
-            neighbours = [int(index) for index in neighboursString]
+            neighbours = [[int(index) for index in indices.split(",")] for indices in triangleStrings]
             currentSurface.append([point, neighbours])
         surfaces.append(currentSurface)
 os.chdir("..")
@@ -30,16 +30,21 @@ os.chdir(current + "/OutputSurfaceMeshes")
 for surface, fileName in zip(surfaces, fileNames):
     listVertices = []
     listTriangles = []
-    for i in range(len(surface)):
-        listVertices.append(surface[i][0])
-        for neighbour in surface[i][1]:
-            if neighbour > i:
-                for secondNeighbour in surface[i][1]:
-                    if secondNeighbour > i and secondNeighbour > neighbour:
-                        if secondNeighbour in surface[neighbour][1]:
-                            listTriangles.append([i,neighbour, secondNeighbour])
-    triangles = np.array(listTriangles)
+    point = 0
+    for pointTrianglePair in surface:
+        listVertices.append(pointTrianglePair[0])
+        validTriangle = True
+        for triangle in pointTrianglePair[1]:
+            for index in triangle:
+                if point > index:
+                    validTriangle = False
+                    break
+            if validTriangle:
+                print(triangle)
+                listTriangles.append(triangle)
+        point += 1
     vertices = np.array(listVertices)
+    triangles = np.array(listTriangles)
     surfaceMesh = mesh.Mesh(np.zeros(triangles.shape[0], dtype=mesh.Mesh.dtype))
     for i, f in enumerate(triangles):
         for j in range(3):
