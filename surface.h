@@ -48,6 +48,7 @@ class Surface {
         return os;
         };
     private:
+        Vector3d crossProd(Vector3d& a, Vector3d& b);
         std::vector<Vector3d> m_points;
         std::unordered_map<int, std::vector<Triangle>> m_faces;
         int m_pointCount;

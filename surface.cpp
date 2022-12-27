@@ -19,10 +19,8 @@ void Surface::addPoint(Vector3d& newPoint)
 void Surface::addTriangle(Triangle triangle)
 {
     m_faces[triangle.vertex1].push_back(triangle);
-    m_faces[triangle.vertex2].push_back(triangle);
-    m_faces[triangle.vertex3].push_back(triangle);
-
-
+    m_faces[triangle.vertex2].push_back(Triangle(triangle.vertex2, triangle.vertex3, triangle.vertex1));
+    m_faces[triangle.vertex3].push_back(Triangle(triangle.vertex3, triangle.vertex1, triangle.vertex2));
 }
 
 Vector3d Surface::getPos(int index)
@@ -32,46 +30,47 @@ Vector3d Surface::getPos(int index)
 
 double Surface::meanCurvature(int index)
 {
-    std::vector<double> edgeLengths;
+    auto key_selector = [](auto pair){return pair.first;};
+    double curvatureSum = 0;
     std::vector<int> completedEdges;
     Vector3d currentPoint = getPos(index);
+    std::unordered_map<int, std::vector<Triangle>> pairTriangles; 
     int uniqueNeighbour1;
     int uniqueNeighbour2;
     for (Triangle triangle : m_faces[index]) {
         if (triangle.vertex1 == index) {
-            uniqueNeighbour1 = triangle.vertex2;
-            uniqueNeighbour2 = triangle.vertex3;
+            pairTriangles[triangle.vertex2].push_back(triangle);
+            pairTriangles[triangle.vertex3].push_back(triangle);
         } else if (triangle.vertex2 == index) {
-            uniqueNeighbour1 = triangle.vertex1;
-            uniqueNeighbour2 = triangle.vertex3;
+            pairTriangles[triangle.vertex1].push_back(triangle);
+            pairTriangles[triangle.vertex3].push_back(triangle);
         } else {
-            uniqueNeighbour1 = triangle.vertex1;
-            uniqueNeighbour2 = triangle.vertex2;
+            pairTriangles[triangle.vertex1].push_back(triangle);
+            pairTriangles[triangle.vertex2].push_back(triangle);
         }
-        bool unique1 = true;
-        bool unique2 = true;
-        for (int completedEdge : completedEdges) {
-            if (completedEdge == uniqueNeighbour1) {
-                unique1 = false;
-            } 
-            if (completedEdge == uniqueNeighbour2) {
-                unique2 = false;
-            }
-        }
-        if (unique1) {
-            edgeLengths.push_back((currentPoint - getPos(uniqueNeighbour1)).norm());
-            completedEdges.push_back(uniqueNeighbour1);
-            std::cout << uniqueNeighbour1 << std::endl;
-        }
-        if (unique2) {
-            edgeLengths.push_back((currentPoint - getPos(uniqueNeighbour2)).norm());
-            completedEdges.push_back(uniqueNeighbour2);
-            std::cout << uniqueNeighbour2 << std::endl;
-        }
-
     }
-    std::cout << edgeLengths.size() << std::endl;
-    return 0;
+    std::vector<int> keys(pairTriangles.size());
+    transform(pairTriangles.begin(), pairTriangles.end(), keys.begin(), key_selector);
+
+    for (int trianglePairIndex : keys) {
+        Triangle triangle1 = pairTriangles[trianglePairIndex][0];
+        Triangle triangle2 = pairTriangles[trianglePairIndex][1];
+        if (triangle1.vertex2 == triangle2.vertex3) {
+            triangle1 = triangle2;
+            triangle2 = pairTriangles[trianglePairIndex][0];
+        }
+        Vector3d edge = getPos(trianglePairIndex) - currentPoint;
+        double length = edge.norm();
+        Vector3d triangleEdge1 = getPos(triangle1.vertex2) - currentPoint;
+        Vector3d triangleEdge2 = getPos(triangle1.vertex3) - currentPoint;
+        Vector3d triangleEdge3 = getPos(triangle2.vertex2) - currentPoint;
+        Vector3d triangleEdge4 = getPos(triangle2.vertex3) - currentPoint;
+        Vector3d norm1 = crossProd(triangleEdge1, triangleEdge2).normalized();
+        Vector3d norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
+        curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
+    }
+
+    return 0.25 * curvatureSum;
 }
 
 double Surface::gaussCurvature(int index)
@@ -106,4 +105,9 @@ double Surface::gaussCurvature(int index)
     }
     
     return 2 * M_PI - angleSum;
+}
+
+Vector3d Surface::crossProd(Vector3d &a, Vector3d &b)
+{
+    return Vector3d(a[1]*b[2] - a[2]*b[1] ,a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]);
 }

@@ -19,7 +19,7 @@ int main(int, char**) {
 
     CircleGen circleMaker;
     Surface testSurface;
-    Vector3d centre = Vector3d(0,0,1);
+    Vector3d centre = Vector3d(0.5,0,1);
     testSurface.addPoint(centre);
     std::vector<Vector3d> circle;
     circleMaker.makeCircle(1, Vector3d::Zero(), 5, circle); 
@@ -31,6 +31,6 @@ int main(int, char**) {
     testSurface.addTriangle(Triangle(0,3,4));
     testSurface.addTriangle(Triangle(0,4,5));
     testSurface.addTriangle(Triangle(0,5,1));
-    std::cout << testSurface.meanCurvature(0) << std::endl;
+    std::cout << testSurface.meanCurvature(0) << " " <<  testSurface.gaussCurvature(0) << std::endl;
     return 0;
 }

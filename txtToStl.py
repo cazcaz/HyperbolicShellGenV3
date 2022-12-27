@@ -40,7 +40,6 @@ for surface, fileName in zip(surfaces, fileNames):
                     validTriangle = False
                     break
             if validTriangle:
-                print(triangle)
                 listTriangles.append(triangle)
         point += 1
     vertices = np.array(listVertices)
