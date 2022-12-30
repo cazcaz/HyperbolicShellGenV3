@@ -11,38 +11,35 @@ RadialSurface::~RadialSurface()
 void RadialSurface::addCurve(std::vector<Vector3d> newCurve)
 {
 
-    // for (Vector3d point : newCurve) {
-    //     addPoint(point);
-    // }
-    // bool initCurve = false;
-    // if(m_curveLengths.size() == 0){
-    //     initCurve = true;
-    // }
-    // int newCurveSize = newCurve.size();
-    // m_curveLengths.push_back(newCurveSize);
-    // m_curveCount += 1;
-    // for (int i = 0; i < newCurveSize; i++) {
-    //     addNeighbour(curveStartIndex(m_curveCount - 1) + correctIndex(m_curveCount - 1, i), curveStartIndex(m_curveCount - 1) + correctIndex(m_curveCount - 1, i - 1));
-    // }
-    // if (!initCurve) {
-    //     int currentConnectionIndex = curveStartIndex(m_curveCount-2);
-    //     double pointGapOld = 1/double(m_curveLengths[m_curveCount-2]);
-    //     double pointGapNew = 1/double(newCurveSize);
-    //     double rangeCounterOld = 0.5 * pointGapOld;
-    //     double rangeCounterNew = 0;
-    //     for(int i = 0; i < newCurveSize; i++) {
-    //         int currentIndex = curveStartIndex(m_curveCount-1) + i;
-    //         addNeighbour(currentIndex, currentConnectionIndex);
-    //         if (rangeCounterNew > rangeCounterOld) {
-    //             rangeCounterOld += pointGapOld;
-    //             currentConnectionIndex += 1;
-    //             addNeighbour(currentIndex, currentConnectionIndex);
-    //         }
-    //         rangeCounterNew += pointGapNew;
-    //     }
-    //     addNeighbour(curveStartIndex(m_curveCount-1),curveStartIndex(m_curveCount-2) + m_curveLengths[m_curveCount-2]- 1);
-
-    // }
+    for (Vector3d point : newCurve) {
+        addPoint(point);
+    }
+    bool initCurve = false;
+    if(m_curveLengths.size() == 0){
+        initCurve = true;
+    }
+    int newCurveSize = newCurve.size();
+    m_curveLengths.push_back(newCurveSize);
+    m_curveCount += 1;
+    if (!initCurve) {
+        int currentConnectionIndex = curveStartIndex(m_curveCount-2);
+        double pointGapOld = 1/double(m_curveLengths[m_curveCount-2]);
+        double pointGapNew = 1/double(newCurveSize);
+        double rangeCounterOld = - 0.5* pointGapOld;
+        double rangeCounterNew = 0;
+        for(int i = 0; i < newCurveSize; i++) {
+            int currentIndex = curveStartIndex(m_curveCount-1) + i;
+            if (rangeCounterNew > rangeCounterOld){
+                rangeCounterOld += pointGapOld;
+                currentConnectionIndex += 1;
+                addTriangle(Triangle(currentIndex, curveStartIndex(m_curveCount-2) + correctIndex(m_curveCount - 2, currentConnectionIndex - 1), currentConnectionIndex));
+            }
+            addTriangle(Triangle(currentIndex, currentConnectionIndex ,curveStartIndex(m_curveCount - 1) + correctIndex(m_curveCount-1, currentIndex+1)));
+            rangeCounterNew += pointGapNew;
+        }
+        std::cout << curveStartIndex(m_curveCount - 1) << " " << correctIndex(m_curveCount - 1, -1) + curveStartIndex(m_curveCount - 1) << " " << curveStartIndex(m_curveCount - 2) << std::endl;
+        addTriangle(Triangle(curveStartIndex(m_curveCount-1), correctIndex(m_curveCount - 1,-1) + curveStartIndex(m_curveCount - 1), curveStartIndex(m_curveCount-2)));
+    }
 }
 
 Vector3d RadialSurface::getPoint(int curve, double s)

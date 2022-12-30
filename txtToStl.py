@@ -33,8 +33,9 @@ for surface, fileName in zip(surfaces, fileNames):
     point = 0
     for pointTrianglePair in surface:
         listVertices.append(pointTrianglePair[0])
-        validTriangle = True
+        print("Point " ,len(listVertices),":", pointTrianglePair[0])
         for triangle in pointTrianglePair[1]:
+            validTriangle = True
             for index in triangle:
                 if point > index:
                     validTriangle = False

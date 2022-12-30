@@ -37,8 +37,9 @@ bool ShellGen::expandCurve() {
         }
     } else {
         for (int i =0; i<nextRingSize;i++){
-            double pointParameter = 2 * M_PI * i/nextRingSize;
-            Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
+            double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
+            //Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
+            Vector3d nextPoint(std::cos(pointParameter), std::sin(pointParameter), 0);
             nextPoint.normalize();
             normals.push_back(nextPoint);
         }
@@ -49,7 +50,7 @@ bool ShellGen::expandCurve() {
             Vector3d nextTangent(-std::sin(angleChange * i), std::cos(angleChange *i), 0);
             nextTangent.normalize();
             Vector3d nextBinormal(normals[i][1]*nextTangent[2] - normals[i][2]*nextTangent[1] ,normals[i][2]*nextTangent[0] - normals[i][0]*nextTangent[2], normals[i][0]*nextTangent[1] - normals[i][1]*nextTangent[0]);
-            //nextBinormal.normalize();
+            nextBinormal.normalize();
             tangents.push_back(nextTangent);
             binormals.push_back(nextBinormal);
     }
@@ -70,12 +71,12 @@ bool ShellGen::expandCurve() {
     VectorXd input = 0 * VectorXd::Random(nextRingSize);
     double energy;
     try {
-        int iterCount = solver.minimize(energyFunctional, input, energy);
-        if (iterCount == 200) {
-            m_parameters.extensionLength *= 0.5;
-            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-            success = false;
-        }
+        // int iterCount = solver.minimize(energyFunctional, input, energy);
+        // if (iterCount == 200) {
+        //     m_parameters.extensionLength *= 0.5;
+        //     std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+        //     success = false;
+        // }
     } catch(...) {
         std::cout << "Failed from error in calcualtion." << std::endl;
         return false;
@@ -90,8 +91,13 @@ bool ShellGen::expandCurve() {
         nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + input[i] * binormals[i]);
     }
     if (success) {
-        m_surface.addCurve(nextCurve);
+        //m_surface.addCurve(nextCurve);
     }
+    Vector3d zero(0,0,curveCount);
+    CircleGen circlemaker;
+    std::vector<Vector3d> initCurve;
+    circlemaker.makeCircle(radialDist, zero, nextRingSize, initCurve);
+    m_surface.addCurve(initCurve);
     return true;
 }
 

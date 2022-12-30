@@ -31,6 +31,9 @@ class Surface {
             Vector3d point = surface.getPos(i);
             os << point[0] << "," << point[1] << "," << point[2] << ":";
             std::vector<Triangle> neighbours = surface.m_faces[i];
+            if (neighbours.size() == 0) {
+                os << "|";
+            }
             for (int j = 0; j < neighbours.size();j++) {
                 if (j == neighbours.size()-1) {
                     if (i == surface.m_points.size() - 1){

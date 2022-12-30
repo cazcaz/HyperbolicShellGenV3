@@ -10,5 +10,5 @@ class CircleGen {
         CircleGen();
         ~CircleGen();
 
-        void makeCircle(double radius, Vector3d centre, int resolution, std::vector<Vector3d>& curve);
+        void makeCircle(double radius, Vector3d& centre, int resolution, std::vector<Vector3d>& curve);
 };

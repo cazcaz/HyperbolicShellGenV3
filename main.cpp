@@ -5,32 +5,17 @@
 using Eigen::Vector3d;
 int main(int, char**) {
     
-    //To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
+    // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
 
-    // std::vector<ShellParams> parameterList;
-    // BatchGen massCalcer;
+    std::vector<ShellParams> parameterList;
+    BatchGen massCalcer;
     
-    // //Push parameters to the parameterList
-    // ShellParams parameters1;
-    // parameters1.expansions = 100;
-    // parameterList.push_back(parameters1);
+    //Push parameters to the parameterList
+    ShellParams parameters1;
+    parameters1.expansions = 10;
+    parameterList.push_back(parameters1);
 
-    // massCalcer.calculateAll(parameterList);
+    massCalcer.calculateAll(parameterList);
 
-    CircleGen circleMaker;
-    Surface testSurface;
-    Vector3d centre = Vector3d(0.5,0,1);
-    testSurface.addPoint(centre);
-    std::vector<Vector3d> circle;
-    circleMaker.makeCircle(1, Vector3d::Zero(), 5, circle); 
-    for (Vector3d point : circle) {
-        testSurface.addPoint(point);
-    }
-    testSurface.addTriangle(Triangle(0,1,2));
-    testSurface.addTriangle(Triangle(0,2,3));
-    testSurface.addTriangle(Triangle(0,3,4));
-    testSurface.addTriangle(Triangle(0,4,5));
-    testSurface.addTriangle(Triangle(0,5,1));
-    std::cout << testSurface.meanCurvature(0) << " " <<  testSurface.gaussCurvature(0) << std::endl;
     return 0;
 }
