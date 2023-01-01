@@ -33,13 +33,13 @@ bool ShellGen::expandCurve() {
     int nextRingSize = int(M_1_PI/(std::asin(1/radialDist * std::sin(M_1_PI/m_parameters.resolution))));
     if (curveCount == 1) {
         for (Vector3d firstCurvePoint : m_surface.getCurve(0)){
-            normals.push_back(firstCurvePoint);
+            normals.push_back(firstCurvePoint.normalized());
         }
     } else {
         for (int i =0; i<nextRingSize;i++){
             double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
-            //Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
-            Vector3d nextPoint(std::cos(pointParameter), std::sin(pointParameter), 0);
+            Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
+            //Vector3d nextPoint(std::cos(pointParameter), std::sin(pointParameter), 0);
             nextPoint.normalize();
             normals.push_back(nextPoint);
         }
@@ -68,7 +68,7 @@ bool ShellGen::expandCurve() {
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 10;
     LBFGSpp::LBFGSSolver<double> solver(param);
-    VectorXd input = 0 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
     double energy;
     try {
         // int iterCount = solver.minimize(energyFunctional, input, energy);
@@ -91,13 +91,8 @@ bool ShellGen::expandCurve() {
         nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + input[i] * binormals[i]);
     }
     if (success) {
-        //m_surface.addCurve(nextCurve);
+        m_surface.addCurve(nextCurve);
     }
-    Vector3d zero(0,0,curveCount);
-    CircleGen circlemaker;
-    std::vector<Vector3d> initCurve;
-    circlemaker.makeCircle(radialDist, zero, nextRingSize, initCurve);
-    m_surface.addCurve(initCurve);
     return true;
 }
 

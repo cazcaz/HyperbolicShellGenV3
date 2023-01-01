@@ -25,26 +25,25 @@ void RadialSurface::addCurve(std::vector<Vector3d> newCurve)
         int currentConnectionIndex = curveStartIndex(m_curveCount-2);
         double pointGapOld = 1/double(m_curveLengths[m_curveCount-2]);
         double pointGapNew = 1/double(newCurveSize);
-        double rangeCounterOld = - 0.5* pointGapOld;
+        double rangeCounterOld = 0.5* pointGapOld;
         double rangeCounterNew = 0;
         for(int i = 0; i < newCurveSize; i++) {
             int currentIndex = curveStartIndex(m_curveCount-1) + i;
             if (rangeCounterNew > rangeCounterOld){
                 rangeCounterOld += pointGapOld;
                 currentConnectionIndex += 1;
-                addTriangle(Triangle(currentIndex, curveStartIndex(m_curveCount-2) + correctIndex(m_curveCount - 2, currentConnectionIndex - 1), currentConnectionIndex));
+                addTriangle(Triangle(currentIndex, currentConnectionIndex - 1, currentConnectionIndex));
             }
-            addTriangle(Triangle(currentIndex, currentConnectionIndex ,curveStartIndex(m_curveCount - 1) + correctIndex(m_curveCount-1, currentIndex+1)));
+            addTriangle(Triangle(currentIndex, currentConnectionIndex ,curveStartIndex(m_curveCount - 1) +  correctIndex(m_curveCount-1, currentIndex+1 - curveStartIndex(m_curveCount - 1))));
             rangeCounterNew += pointGapNew;
         }
-        std::cout << curveStartIndex(m_curveCount - 1) << " " << correctIndex(m_curveCount - 1, -1) + curveStartIndex(m_curveCount - 1) << " " << curveStartIndex(m_curveCount - 2) << std::endl;
-        addTriangle(Triangle(curveStartIndex(m_curveCount-1), correctIndex(m_curveCount - 1,-1) + curveStartIndex(m_curveCount - 1), curveStartIndex(m_curveCount-2)));
+        addTriangle(Triangle(correctIndex(m_curveCount - 2, -1) + curveStartIndex(m_curveCount-2),  curveStartIndex(m_curveCount-2),curveStartIndex(m_curveCount - 1)));
     }
 }
 
 Vector3d RadialSurface::getPoint(int curve, double s)
 {
-    double pointLocation =  s*m_curveLengths[curve]/2 * M_PI;
+    double pointLocation =  s*m_curveLengths[curve]/(2 * M_PI);
     //s is the radial parameter in [0, 2 * pi)
     int prevIndex = int(pointLocation);
     double lineRatio = pointLocation - prevIndex;
