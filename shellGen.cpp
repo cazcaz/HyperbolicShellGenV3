@@ -15,9 +15,12 @@ void ShellGen::setInitCurve() {
     Vector3d centre(m_parameters.centreX, m_parameters.centreY, m_parameters.centreZ);
     m_surface = RadialSurface();
     std::vector<Vector3d> initCurve;
+    std::vector<Vector3d> secondCurve;
     CircleGen circlemaker;
     circlemaker.makeCircle(1, centre, m_parameters.resolution, initCurve);
+    circlemaker.makeCircle(1 + m_parameters.extensionLength, centre, m_parameters.resolution, secondCurve);
     m_surface.addCurve(initCurve);
+    m_surface.addCurve(secondCurve);
 }
 
 bool ShellGen::expandCurve() {
@@ -51,6 +54,9 @@ bool ShellGen::expandCurve() {
             nextTangent.normalize();
             Vector3d nextBinormal(normals[i][1]*nextTangent[2] - normals[i][2]*nextTangent[1] ,normals[i][2]*nextTangent[0] - normals[i][0]*nextTangent[2], normals[i][0]*nextTangent[1] - normals[i][1]*nextTangent[0]);
             nextBinormal.normalize();
+            if (nextBinormal[2] == -1) {
+                nextBinormal[2] = 1;
+            }
             tangents.push_back(nextTangent);
             binormals.push_back(nextBinormal);
     }
@@ -66,16 +72,16 @@ bool ShellGen::expandCurve() {
     }
     EnergyFunction energyFunctional(m_surface, normals, binormals, m_parameters, radialDist);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 10;
+    param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
     VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
     double energy;
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
-        if (iterCount == 200) {
-            m_parameters.extensionLength *= 0.5;
-            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-            success = false;
+        if (iterCount == 100) {
+            //m_parameters.extensionLength *= 0.5;
+            //std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            //success = false;
         }
     } catch(...) {
         std::cout << "Failed from error in calcualtion." << std::endl;
@@ -106,7 +112,6 @@ void ShellGen::expandCurveNTimes() {
         return;
     } else {
         for (int iteration = 0; iteration < m_parameters.expansions; iteration++){
-            std::cout << iteration <<std::endl;
             if (!expandCurve()){
                 return;
             }

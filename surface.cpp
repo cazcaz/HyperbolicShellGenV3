@@ -51,7 +51,7 @@ double Surface::meanCurvature(int index)
     }
     std::vector<int> keys(pairTriangles.size());
     transform(pairTriangles.begin(), pairTriangles.end(), keys.begin(), key_selector);
-
+    double area = 0;
     for (int trianglePairIndex : keys) {
         Triangle triangle1 = pairTriangles[trianglePairIndex][0];
         Triangle triangle2 = pairTriangles[trianglePairIndex][1];
@@ -63,14 +63,17 @@ double Surface::meanCurvature(int index)
         double length = edge.norm();
         Vector3d triangleEdge1 = getPos(triangle1.vertex2) - currentPoint;
         Vector3d triangleEdge2 = getPos(triangle1.vertex3) - currentPoint;
+        double edge1Length = (triangleEdge1).norm();
+        double edge2Length = (triangleEdge2).norm();
+        double vertexAngle = std::acos(triangleEdge1.normalized().dot(triangleEdge2.normalized()));
         Vector3d triangleEdge3 = getPos(triangle2.vertex2) - currentPoint;
         Vector3d triangleEdge4 = getPos(triangle2.vertex3) - currentPoint;
         Vector3d norm1 = crossProd(triangleEdge1, triangleEdge2).normalized();
         Vector3d norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
-        curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
+        area += 0.125 * edge1Length * edge2Length * std::sin(vertexAngle);
+        curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));//1/triangleArea * length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
     }
-
-    return 0.25 * curvatureSum;
+    return (0.25 * curvatureSum)/area;
 }
 
 double Surface::gaussCurvature(int index)
@@ -85,6 +88,7 @@ double Surface::gaussCurvature(int index)
     Vector3d midPoint = getPos(index);
     Vector3d edge1;
     Vector3d edge2;
+    double area = 0;
     for (Triangle triangle : pointTriangles) {
         if (triangle.vertex1 == index) {
             uniqueNeighbour1 = triangle.vertex2;
@@ -99,13 +103,17 @@ double Surface::gaussCurvature(int index)
         vertex1 = getPos(uniqueNeighbour1);
         vertex2 = getPos(uniqueNeighbour2);
         
+        double edge1Length = (vertex1 - midPoint).norm();
+        double edge2Length = (vertex2 - midPoint).norm();
         edge1 = (vertex1 - midPoint).normalized();
         edge2 = (vertex2 - midPoint).normalized();
-        angleSum += std::acos(edge1.dot(edge2));
+        double vertexAngle = std::acos(edge1.dot(edge2));
+        area += 0.125 * edge1Length * edge2Length * std::sin(vertexAngle);
+        angleSum +=  vertexAngle;
     }
-    
-    return 2 * M_PI - angleSum;
+    return (2 * M_PI - angleSum)/area;
 }
+
 
 Vector3d Surface::crossProd(Vector3d &a, Vector3d &b)
 {

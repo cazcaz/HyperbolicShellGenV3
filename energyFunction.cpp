@@ -31,15 +31,14 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     }
     nextSurface.addCurve(nextCurve);
     double totalEnergy = evalEnergy(nextSurface);
-    double h = 0.0000000005;
+    double h = 0.0000000000001;
     for (int i=0; i<curveSize; i++) {
         nextCurve[i] += h * m_parameters.extensionLength * m_binormals[i];
         RadialSurface tempSurfaceCopy(m_surface);
         tempSurfaceCopy.addCurve(nextCurve);
         derivatives[i] = (evalEnergy(tempSurfaceCopy) - totalEnergy)/h;
-        nextCurve[i] =  h * m_parameters.extensionLength * m_binormals[i];
+        nextCurve[i] -= h * m_parameters.extensionLength * m_binormals[i];
     }
-
     return totalEnergy;
 };
 
@@ -69,10 +68,12 @@ double EnergyFunction::evalEnergy(RadialSurface& extendedSurface)
     double totalMean = 0;
     for (int i = 0; i < extendedSurface.getCurve(curveCount-2).size(); i++) {
         int index = extendedSurface.curveStartIndex(curveCount-2) + i;
-        totalGauss += extendedSurface.gaussCurvature(index);
-        totalMean += extendedSurface.meanCurvature(index);
+        totalGauss +=  extendedSurface.gaussCurvature(index);
+        totalMean += m_parameters.stiffnessRatio / 2 * std::pow(extendedSurface.meanCurvature(index) - m_parameters.desiredCurvature,2);
     }
-    return m_parameters.meanStiffness / 2 * std::pow(totalMean - m_parameters.desiredCurvature,2) + m_parameters.gaussStiffness * totalGauss;
+    // std::cout << "Mean: " << totalMean << std::endl;
+    // std::cout << "Gauss: " << totalGauss << std::endl;
+    return totalMean;// + totalGauss;
 };
 
 int EnergyFunction::correctIndex(int index){

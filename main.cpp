@@ -11,9 +11,12 @@ int main(int, char**) {
     BatchGen massCalcer;
     
     //Push parameters to the parameterList
-    ShellParams parameters1;
-    parameters1.expansions = 10;
-    parameterList.push_back(parameters1);
+    for (int i=0; i < 100; i++){
+        ShellParams parameters;
+        parameters.expansions = 20;
+        parameters.desiredCurvature = 0.0005 - 0.00001 * i;
+        parameterList.push_back(parameters);
+    }
 
     massCalcer.calculateAll(parameterList);
 
