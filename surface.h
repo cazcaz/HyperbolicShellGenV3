@@ -21,6 +21,12 @@ class Surface {
         Surface();
         ~Surface();
 
+        Surface(const Surface &rhs){
+            this->m_points = rhs.m_points;
+            this->m_faces = rhs.m_faces;
+            this->m_pointCount = rhs.m_pointCount;
+        };
+
         void addPoint(Vector3d& newPoint);
         void addTriangle(Triangle triangle);
         Vector3d getPos(int index);

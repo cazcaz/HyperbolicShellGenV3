@@ -23,15 +23,24 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     std::vector<Vector3d> nextCurve;
     int curveCount = m_surface.getCurveCount();
     double sParam;
-    int curveSize = m_surface.getCurve(curveCount-1).size();
+    int curveSize = inputs.size();
+    RadialSurface nextSurface(m_surface);
     for (int i=0; i<curveSize; i++) {
         sParam = 2 * M_PI/curveSize * i;
         nextCurve.push_back(m_surface.getPoint(curveCount-1, sParam) + m_parameters.extensionLength * m_normals[i] + m_parameters.extensionLength * inputs[i] * m_binormals[i]);
     }
-    // Here find the mean and gaussian curvatures of the surface at every vertex
+    nextSurface.addCurve(nextCurve);
+    double totalEnergy = evalEnergy(nextSurface);
+    double h = 0.0000000005;
+    for (int i=0; i<curveSize; i++) {
+        nextCurve[i] += h * m_parameters.extensionLength * m_binormals[i];
+        RadialSurface tempSurfaceCopy(m_surface);
+        tempSurfaceCopy.addCurve(nextCurve);
+        derivatives[i] = (evalEnergy(tempSurfaceCopy) - totalEnergy)/h;
+        nextCurve[i] =  h * m_parameters.extensionLength * m_binormals[i];
+    }
 
-
-    return 0;
+    return totalEnergy;
 };
 
 Vector3d EnergyFunction::normalVecDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db){
@@ -51,6 +60,19 @@ double EnergyFunction::dxDij(double x, double xdij, Vector3d p1, Vector3d p2, Ve
     double norm1 = (p3-p2).norm();
     double norm2 = (p2-p1).norm();
     return 2/(norm1 + norm2) * (xdij/std::pow(x-1,2))  - (normDeriv(p3,p2,dp3,dp2) + normDeriv(p2,p1,dp2,dp1))/(std::pow(norm1+norm2, 2)) * std::pow(std::tan((M_PI - std::acos(x))/2),2);
+}
+double EnergyFunction::evalEnergy(RadialSurface& extendedSurface)
+{
+    int curveCount = extendedSurface.getCurveCount();
+    // Here find the mean and gaussian curvatures of the surface at every vertex
+    double totalGauss = 0;
+    double totalMean = 0;
+    for (int i = 0; i < extendedSurface.getCurve(curveCount-2).size(); i++) {
+        int index = extendedSurface.curveStartIndex(curveCount-2) + i;
+        totalGauss += extendedSurface.gaussCurvature(index);
+        totalMean += extendedSurface.meanCurvature(index);
+    }
+    return m_parameters.meanStiffness / 2 * std::pow(totalMean - m_parameters.desiredCurvature,2) + m_parameters.gaussStiffness * totalGauss;
 };
 
 int EnergyFunction::correctIndex(int index){
@@ -90,4 +112,11 @@ double EnergyFunction::bendingEnergyDeriv(Vector3d a, Vector3d b, Vector3d c, Ve
     double dxdij = ((c-b).normalized().dot(normalVecDeriv(a,b,da,db)) + (a-b).normalized().dot(normalVecDeriv(c,b,dc,db)));
     double cosAngle = (c-b).normalized().dot((a-b).normalized());
     return dxDij(cosAngle, dxdij, a, b, c, da, db, dc);
+}
+double EnergyFunction::deltaFunc(int i, int j)
+{
+    if (i==j) {
+        return 1;
+    }
+    return 0;
 };

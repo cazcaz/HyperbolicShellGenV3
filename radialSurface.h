@@ -11,9 +11,9 @@ class RadialSurface : public Surface {
         Vector3d getPoint(int curve, int index);
         std::vector<Vector3d>getCurve(int curveNumber);
         int getCurveCount();
-    private:
         int curveStartIndex(int curveNum);
         int correctIndex(int curve, int index);
+    private:
         int m_curveCount;
         std::vector<int> m_curveLengths;
 };

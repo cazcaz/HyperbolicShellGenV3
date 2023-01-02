@@ -12,7 +12,7 @@ int main(int, char**) {
     
     //Push parameters to the parameterList
     ShellParams parameters1;
-    parameters1.expansions = 50;
+    parameters1.expansions = 10;
     parameterList.push_back(parameters1);
 
     massCalcer.calculateAll(parameterList);
