@@ -30,6 +30,7 @@ class Surface {
         void addPoint(Vector3d& newPoint);
         void addTriangle(Triangle triangle);
         Vector3d getPos(int index);
+        void changePos(int index, Vector3d& newPoint);
         double meanCurvature(int index);
         double gaussCurvature(int index);
         friend std::ostream& operator<< (std::ostream& os, Surface& surface){

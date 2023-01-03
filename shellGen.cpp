@@ -70,18 +70,18 @@ bool ShellGen::expandCurve() {
         Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
         extendedPrevCurve.push_back(nextPoint);
     }
-    EnergyFunction energyFunctional(m_surface, normals, binormals, m_parameters, radialDist);
+    EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, radialDist);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 100;
+    param.max_iterations = 10;
     LBFGSpp::LBFGSSolver<double> solver(param);
-    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0 * VectorXd::Random(nextRingSize);
     double energy;
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
-        if (iterCount == 100) {
-            //m_parameters.extensionLength *= 0.5;
-            //std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-            //success = false;
+        if (iterCount == 10) {
+            m_parameters.extensionLength *= 0.5;
+            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            success = false;
         }
     } catch(...) {
         std::cout << "Failed from error in calcualtion." << std::endl;
@@ -94,7 +94,7 @@ bool ShellGen::expandCurve() {
             std::cout << "Failed from nan input." << std::endl;
             return false;
         }
-        nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + input[i] * binormals[i]);
+        nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + m_parameters.extensionLength * input[i] * binormals[i]);
     }
     if (success) {
         m_surface.addCurve(nextCurve);
@@ -112,6 +112,7 @@ void ShellGen::expandCurveNTimes() {
         return;
     } else {
         for (int iteration = 0; iteration < m_parameters.expansions; iteration++){
+            std::cout << iteration <<std::endl;
             if (!expandCurve()){
                 return;
             }
@@ -129,11 +130,6 @@ int ShellGen::correctIndex(int index){
 };
 
 void ShellGen::printSurface() {
-    int fileSizeAim = 50000; //In kilobytes, assumes 100 bytes per point in mesh
-    int maxRes = 200;
-    int pointCount = m_parameters.resolution * m_surface.getCurveCount();
-    bool needsCompress = (pointCount > fileSizeAim*10.24);
-    //bool needsCompress = false;
     
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
@@ -145,50 +141,7 @@ void ShellGen::printSurface() {
     std::string path = "/../OutputSurfaceTxts/";
     std::ofstream open(path);
     std::ofstream surfaceFile("../OutputSurfaceTxts/" + fileName + ".txt");
-
-    // if (needsCompress) {
-    //     std::vector<int> radialIndices;
-    //     std::vector<int> circumIndices;
-    //     if (m_parameters.resolution > maxRes) {
-    //         double pointGap = double(m_parameters.resolution) / double(maxRes);
-    //         for (int i = 0; i < maxRes; i++){
-    //             radialIndices.push_back(int(pointGap*i));
-    //         }
-    //         if (radialIndices[radialIndices.size()-1] != m_surface.size()-1) {
-    //             radialIndices.push_back(m_parameters.resolution-1);
-    //         }
-    //         pointCount = radialIndices.size() * m_parameters.resolution;
-    //         needsCompress = (pointCount > fileSizeAim*10.24);
-    //     } else {
-    //         for (int i = 0; i < maxRes; i++){
-    //             radialIndices.push_back(i);
-    //         }
-    //     }
-    //     double pointGap = double(pointCount) / (double(fileSizeAim)*10.24);
-    //     if (needsCompress) {
-    //         for (int i = 0; i < int(m_surface.size()/pointGap); i++){
-    //             circumIndices.push_back(int(pointGap*i));
-    //         }
-    //         if (circumIndices[circumIndices.size()-1] != m_surface.size()-1) {
-    //             circumIndices.push_back(m_surface.size()-2);
-    //         }
-    //     } else {
-    //         for (int i = 0; i < m_surface.size(); i++){
-    //             radialIndices.push_back(i);
-    //         }
-    //     }
-    //     for(int circumIndex : circumIndices) {
-    //         for(int radialIndex : radialIndices) {
-    //         surfaceFile << m_surface[circumIndex][radialIndex][0] << ",";
-    //         surfaceFile << m_surface[circumIndex][radialIndex][1] << ",";
-    //         surfaceFile << m_surface[circumIndex][radialIndex][2] << " ";
-    //         }
-    //     surfaceFile << "\n";
-    //     }
-    // } else {
-        surfaceFile << m_surface;
-    //}
-    
+    surfaceFile << m_surface;
     surfaceFile.close();
 }
 

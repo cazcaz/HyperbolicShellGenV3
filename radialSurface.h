@@ -10,6 +10,7 @@ class RadialSurface : public Surface {
         Vector3d getPoint(int curve, double s);
         Vector3d getPoint(int curve, int index);
         std::vector<Vector3d>getCurve(int curveNumber);
+        void changeCurvePoint(int curve, int index, Vector3d& newPoint);
         int getCurveCount();
         int curveStartIndex(int curveNum);
         int correctIndex(int curve, int index);

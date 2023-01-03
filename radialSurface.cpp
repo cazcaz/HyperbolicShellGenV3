@@ -56,6 +56,8 @@ Vector3d RadialSurface::getPoint(int curve, int index)
     return getPos(newIndex);
 }
 
+
+
 std::vector<Vector3d> RadialSurface::getCurve(int curveNumber)
 {
     std::vector<Vector3d> curve;
@@ -63,6 +65,13 @@ std::vector<Vector3d> RadialSurface::getCurve(int curveNumber)
         curve.push_back(getPoint(curveNumber, i));
     }
     return curve;
+}
+
+void RadialSurface::changeCurvePoint(int curve, int index, Vector3d &newPoint)
+{
+    int curveIndex = curveStartIndex(curve);
+    changePos(curveIndex + index, newPoint);
+    return;
 }
 
 int RadialSurface::getCurveCount()

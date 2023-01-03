@@ -125,9 +125,9 @@ public:
             // New gradient norm
             m_gnorm = m_grad.norm();
 
-            // std::cout << "Iter " << k << " finished line search" << std::endl;
-            // std::cout << "   x = " << x.transpose() << std::endl;
-            // std::cout << "   f(x) = " << fx << ", ||grad|| = " << m_gnorm << std::endl << std::endl;
+            std::cout << "Iter " << k << " finished line search" << std::endl;
+            std::cout << "   x = " << x.transpose() << std::endl;
+            std::cout << "   f(x) = " << fx << ", ||grad|| = " << m_gnorm << std::endl << std::endl;
 
             // Convergence test -- gradient
             if (m_gnorm <= m_param.epsilon || m_gnorm <= m_param.epsilon_rel * x.norm())

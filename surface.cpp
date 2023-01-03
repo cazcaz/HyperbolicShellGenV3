@@ -28,6 +28,12 @@ Vector3d Surface::getPos(int index)
     return m_points[index];
 }
 
+void Surface::changePos(int index, Vector3d& newPoint)
+{
+    m_points[index] = newPoint;
+    return;
+}
+
 double Surface::meanCurvature(int index)
 {
     auto key_selector = [](auto pair){return pair.first;};
