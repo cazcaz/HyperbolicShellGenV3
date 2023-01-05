@@ -30,7 +30,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
         nextCurve.push_back(m_prevCurve[i] + m_parameters.extensionLength * m_normals[i] + m_parameters.extensionLength * inputs[i] * m_binormals[i]);
     }
     double totalEnergy = evalEnergy(m_surface);
-    double h = 1e-300;
+    double h = 1e-15;
     RadialSurface nextSurface(m_surface);
     nextSurface.addCurve(nextCurve);
     for (int i=0; i<curveSize; i++) {
@@ -39,6 +39,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
         double beforeEnergy = evalEnergy(nextSurface);
         nextSurface.changeCurvePoint(curveCount, i, changedCurvePoint);
         derivatives[i] = (evalEnergy(nextSurface) - beforeEnergy)/h;
+        //std::cout << evalEnergy(nextSurface) <<" "<< beforeEnergy<<std::endl;
         nextSurface.changeCurvePoint(curveCount, i, originalCurvePoint);
     }
     return totalEnergy;
@@ -50,13 +51,12 @@ double EnergyFunction::evalEnergy(RadialSurface& extendedSurface)
     // Here find the mean and gaussian curvatures of the surface at every vertex
     double totalGauss = 0;
     double totalMean = 0;
-    for (int i = 0; i < extendedSurface.getCurve(curveCount-2).size(); i++) {
+    for (int i = 0; i < extendedSurface.getCurveLength(curveCount-2); i++) {
         int index = extendedSurface.curveStartIndex(curveCount-2) + i;
-        totalGauss += extendedSurface.gaussCurvature(index);
-        totalMean += m_parameters.stiffnessRatio / 2 * std::pow(extendedSurface.gaussCurvature(index) - m_parameters.desiredCurvature,2);
+        totalGauss += 0;//extendedSurface.gaussCurvature(index);
+        totalMean += m_parameters.stiffnessRatio / 2 * std::pow(extendedSurface.meanCurvature(index) - m_parameters.desiredCurvature,2);
     }
-    // std::cout << "Mean: " << totalMean << std::endl;
-    // std::cout << "Gauss: " << totalGauss << std::endl;
-    return totalMean;// + totalGauss;
+    //std::cout << "Total: " << totalMean + totalGauss << std::endl;
+    return totalMean + totalGauss;
 };
 

@@ -97,3 +97,8 @@ int RadialSurface::correctIndex(int curve, int index)
     }
     return index;
 }
+
+int RadialSurface::getCurveLength(int curveNum)
+{
+    return m_curveLengths[curveNum];
+}

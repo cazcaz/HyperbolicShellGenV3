@@ -14,6 +14,7 @@ class RadialSurface : public Surface {
         int getCurveCount();
         int curveStartIndex(int curveNum);
         int correctIndex(int curve, int index);
+        int getCurveLength(int curveNum);
     private:
         int m_curveCount;
         std::vector<int> m_curveLengths;

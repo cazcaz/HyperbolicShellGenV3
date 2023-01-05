@@ -11,14 +11,21 @@ int main(int, char**) {
     BatchGen massCalcer;
     
     //Push parameters to the parameterList
-    for (int i=0; i < 100; i++){
+    for (int i=0; i < 1; i++){
         ShellParams parameters;
         parameters.expansions = 20;
-        parameters.desiredCurvature = 0.0005 - 0.00001 * i;
+        parameters.desiredCurvature = -1 - 0.01 * i;
         parameterList.push_back(parameters);
     }
 
     massCalcer.calculateAll(parameterList);
+
+    // ShellParams parameters;
+    // parameters.expansions = 20;
+    // parameters.desiredCurvature = 0.0005;
+    // ShellGen shellGenerator(parameters);
+    // shellGenerator.setInitCurve();
+    // shellGenerator.expandCurveNTimes();
 
     return 0;
 }

@@ -96,6 +96,8 @@ double Surface::gaussCurvature(int index)
     Vector3d edge2;
     double area = 0;
     for (Triangle triangle : pointTriangles) {
+        // For each triangle which is a neighbour of the point, check which vertex is the shared vertex
+        // NOT SLOW
         if (triangle.vertex1 == index) {
             uniqueNeighbour1 = triangle.vertex2;
             uniqueNeighbour2 = triangle.vertex3;
