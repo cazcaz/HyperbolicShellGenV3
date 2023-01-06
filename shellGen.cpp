@@ -33,7 +33,7 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> tangents;
     double initialDist = 1;
     double radialDist = 1 + (curveCount-1) * m_parameters.extensionLength;
-    int nextRingSize = int(M_1_PI/(std::asin(1/radialDist * std::sin(M_1_PI/m_parameters.resolution))))/4;
+    int nextRingSize = m_parameters.resolution;//int(M_1_PI/(std::asin(1/radialDist * std::sin(M_1_PI/m_parameters.resolution))))/4;
     if (nextRingSize < m_parameters.resolution) {
         nextRingSize = m_parameters.resolution;
     }
@@ -77,12 +77,12 @@ bool ShellGen::expandCurve() {
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
-    VectorXd input = 0 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
     double energy;
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
         if (iterCount == 100) {
-            m_parameters.extensionLength *= 0.5;
+            //m_parameters.extensionLength *= 0.5;
             std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
             success = false;
         }

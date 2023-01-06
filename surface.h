@@ -31,8 +31,8 @@ class Surface {
         void addTriangle(Triangle triangle);
         Vector3d getPos(int index);
         void changePos(int index, Vector3d& newPoint);
-        double meanCurvature(int index);
-        double gaussCurvature(int index);
+        void curvatures(int index, double& gaussCurvature, double& meanCurvature);
+        std::vector<Triangle> getNeighbourTriangles(int index);
         friend std::ostream& operator<< (std::ostream& os, Surface& surface){
         for (int i=0; i < surface.m_points.size(); i++){
             Vector3d point = surface.getPos(i);
