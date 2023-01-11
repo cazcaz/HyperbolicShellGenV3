@@ -77,15 +77,26 @@ bool ShellGen::expandCurve() {
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
-    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
     double energy;
+    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
+
+    // Used to make a linear approx. of the derivative for testing
+    VectorXd inputChanged = input;
+    double h = 0.0000001;
+    inputChanged[10] += h;
+    VectorXd derivatives = VectorXd::Zero(nextRingSize);
+    double energy2;
+    energy2 = energyFunctional(inputChanged, derivatives);
+    energy = energyFunctional(input, derivatives);
+    std::cout << "Approx: " << (energy2 - energy)/h << std::endl;
+    std::cout << "Real: " << derivatives[10] << std::endl;
     try {
-        int iterCount = solver.minimize(energyFunctional, input, energy);
-        if (iterCount == 100) {
-            //m_parameters.extensionLength *= 0.5;
-            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-            success = false;
-        }
+        // int iterCount = solver.minimize(energyFunctional, input, energy);
+        // if (iterCount == 100) {
+        //     //m_parameters.extensionLength *= 0.5;
+        //     std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+        //     success = false;
+        // }
     } catch(...) {
         std::cout << "Failed from error in calcualtion." << std::endl;
         return false;
@@ -115,7 +126,6 @@ void ShellGen::expandCurveNTimes() {
         return;
     } else {
         for (int iteration = 0; iteration < m_parameters.expansions; iteration++){
-            std::cout << iteration <<std::endl;
             if (!expandCurve()){
                 return;
             }

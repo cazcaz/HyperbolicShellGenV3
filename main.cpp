@@ -5,27 +5,27 @@
 using Eigen::Vector3d;
 int main(int, char**) {
     
-    // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
+    // // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
 
-    std::vector<ShellParams> parameterList;
-    BatchGen massCalcer;
+    // std::vector<ShellParams> parameterList;
+    // BatchGen massCalcer;
     
-    //Push parameters to the parameterList
-    for (int i=0; i < 100; i++){
-        ShellParams parameters;
-        parameters.expansions = 20;
-        parameters.desiredCurvature = 1 - 0.01 * i;
-        parameterList.push_back(parameters);
-    }
+    // //Push parameters to the parameterList
+    // for (int i=0; i < 1; i++){
+    //     ShellParams parameters;
+    //     parameters.expansions = 20;
+    //     parameters.desiredCurvature = 1 - 0.01 * i;
+    //     parameterList.push_back(parameters);
+    // }
 
-    massCalcer.calculateAll(parameterList);
+    // massCalcer.calculateAll(parameterList);
 
-    // ShellParams parameters;
-    // parameters.expansions = 20;
-    // parameters.desiredCurvature = -2;
-    // ShellGen shellGenerator(parameters);
-    // shellGenerator.setInitCurve();
-    // shellGenerator.expandCurveNTimes();
+    ShellParams parameters;
+    parameters.expansions = 1;
+    parameters.desiredCurvature = -2;
+    ShellGen shellGenerator(parameters);
+    shellGenerator.setInitCurve();
+    shellGenerator.expandCurveNTimes();
 
     return 0;
 }
