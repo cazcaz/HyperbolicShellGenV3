@@ -78,7 +78,7 @@ bool ShellGen::expandCurve() {
     param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0 * VectorXd::Random(nextRingSize);
 
     // Used to make a linear approx. of the derivative for testing
     VectorXd inputChanged = input;
@@ -90,6 +90,7 @@ bool ShellGen::expandCurve() {
     energy = energyFunctional(input, derivatives);
     std::cout << "Approx: " << (energy2 - energy)/h << std::endl;
     std::cout << "Real: " << derivatives[10] << std::endl;
+    std::cout << derivatives.transpose() << std::endl;
     try {
         // int iterCount = solver.minimize(energyFunctional, input, energy);
         // if (iterCount == 100) {

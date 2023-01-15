@@ -21,11 +21,12 @@ int main(int, char**) {
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 1;
+    parameters.expansions = 10;
     parameters.desiredCurvature = -2;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();
     shellGenerator.expandCurveNTimes();
+    shellGenerator.printSurface();
 
     return 0;
 }
