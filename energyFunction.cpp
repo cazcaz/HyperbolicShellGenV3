@@ -195,12 +195,12 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 }
                 // Finally add the contributions to the derivatives
                 
-                derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature - m_parameters.desiredCurvature) * dMean + dGauss; 
+                derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature - m_parameters.desiredCurvature) * dMean + (gaussCurvature - m_parameters.desiredCurvature)* dGauss; 
                 
                 }
             }
         }
-        totalEnergy += m_parameters.stiffnessRatio/2 * std::pow(meanCurvature - m_parameters.desiredCurvature,2) + gaussCurvature;
+        totalEnergy += m_parameters.stiffnessRatio * 0.5 * std::pow(meanCurvature - m_parameters.desiredCurvature,2) + 0.5 * std::pow(gaussCurvature - m_parameters.desiredCurvature,2);
     }
     return totalEnergy;
 };
