@@ -33,7 +33,7 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> tangents;
     double initialDist = 1;
     double radialDist = 1 + (curveCount-1) * m_parameters.extensionLength;
-    int nextRingSize = m_parameters.resolution;//int(M_1_PI/(std::asin(1/radialDist * std::sin(M_1_PI/m_parameters.resolution))))/4;
+    int nextRingSize = int(M_1_PI/(std::asin(1/radialDist * std::sin(M_1_PI/m_parameters.resolution))))/4;
     if (nextRingSize < m_parameters.resolution) {
         nextRingSize = m_parameters.resolution;
     }
@@ -44,8 +44,8 @@ bool ShellGen::expandCurve() {
     } else {
         for (int i =0; i<nextRingSize;i++){
             double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
-            Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
-            //Vector3d nextPoint(std::cos(pointParameter), std::sin(pointParameter), 0);
+            //Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
+            Vector3d nextPoint(std::cos(pointParameter), std::sin(pointParameter), 0);
             nextPoint.normalize();
             normals.push_back(nextPoint);
         }
@@ -80,33 +80,33 @@ bool ShellGen::expandCurve() {
     double energy;
     VectorXd input = 0 * VectorXd::Random(nextRingSize);
 
-    // Used to make a linear approx. of the derivative for testing
-    VectorXd inputChanged = input;
-    double h = 0.0000001;
-    inputChanged[10] += h;
-    VectorXd derivatives = VectorXd::Zero(nextRingSize);
-    double energy2;
-    energy2 = energyFunctional(inputChanged, derivatives);
-    energy = energyFunctional(input, derivatives);
-    std::cout << "Approx: " << (energy2 - energy)/h << std::endl;
-    std::cout << "Real: " << derivatives[10] << std::endl;
-    std::cout << derivatives.transpose() << std::endl;
+    // // Used to make a linear approx. of the derivative for testing
+    // VectorXd inputChanged = input;
+    // double h = 0.000000001;
+    // inputChanged[10] += h;
+    // VectorXd derivatives = VectorXd::Zero(nextRingSize);
+    // double energy2;
+    // energy2 = energyFunctional(inputChanged, derivatives);
+    // energy = energyFunctional(input, derivatives);
+    // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
+    // std::cout << "Real: " << derivatives[10] << std::endl;
+    // std::cout << derivatives.transpose() << std::endl;
     try {
-        // int iterCount = solver.minimize(energyFunctional, input, energy);
-        // if (iterCount == 100) {
-        //     //m_parameters.extensionLength *= 0.5;
-        //     std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-        //     success = false;
-        // }
+        int iterCount = solver.minimize(energyFunctional, input, energy);
+        if (iterCount == 100) {
+            //m_parameters.extensionLength *= 0.5;
+            //std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            //success = false;
+        }
     } catch(...) {
-        std::cout << "Failed from error in calcualtion." << std::endl;
+        //std::cout << "Failed from error in calculation." << std::endl;
         return false;
     }
 
     std::vector<Vector3d> nextCurve;
     for (int i =0; i<nextRingSize;i++) {
         if (std::isnan(input[i])){
-            std::cout << "Failed from nan input." << std::endl;
+            //std::cout << "Failed from nan input." << std::endl;
             return false;
         }
         nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + m_parameters.extensionLength * input[i] * binormals[i]);

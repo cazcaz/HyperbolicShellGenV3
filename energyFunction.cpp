@@ -124,7 +124,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
 
                 // Gauss derivative calculation
                 int derivativeSurfaceIndex = triangle1.vertex3;
-                int derivativeIndex = nextSurface.correctIndex(curveCount, triangle1.vertex3); 
+                int derivativeIndex = nextSurface.correctIndex(curveCount, triangle1.vertex3);
                 Vector3d derivPoint = nextSurface.getPos(derivativeSurfaceIndex);
                 Vector3d derivPointNeighbour1 = nextSurface.getPos(triangle1.vertex2);
                 Vector3d derivPointNeighbour2 = nextSurface.getPos(triangle2.vertex3);
@@ -139,49 +139,23 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 
                 // Mean derivative calculation
                 Vector3d normalisedEdge1 = triangleEdge1.normalized();
-                Vector3d normalisedEdge2 = triangleEdge2.normalized();
+                Vector3d normalisedEdge2 = triangleEdge3.normalized();
                 Vector3d normalisedEdge3 = triangleEdge4.normalized();
-                Vector3d edgeVecDeriv = normalVecDeriv(derivPoint, currentPoint, dDerivPoint, zeroVec);
-                Vector3d dnorm1 = crossDeriv(normalisedEdge1, normalisedEdge2, zeroVec, edgeVecDeriv);
-                Vector3d dnorm2 = crossDeriv(normalisedEdge2, normalisedEdge3, edgeVecDeriv, zeroVec);
+                Vector3d edgeVecDeriv = normVecDeriv(triangleEdge2, dDerivPoint);
+                Vector3d norm1Numerator = crossProd(triangleEdge1, triangleEdge2);
+                Vector3d norm2Numerator = crossProd(triangleEdge3, triangleEdge4);
+                Vector3d dnorm1Numerator = crossDeriv(triangleEdge1, triangleEdge2, zeroVec, edgeVecDeriv);
+                Vector3d dnorm2Numerator = crossDeriv(triangleEdge3, triangleEdge4, edgeVecDeriv, zeroVec);
+                Vector3d dnorm1 = normVecDeriv(norm1Numerator, dnorm1Numerator);
+                Vector3d dnorm2 = normVecDeriv(norm2Numerator, dnorm2Numerator);
                 Vector3d crossNorms = crossProd(norm1, norm2);
                 double atanp1 = normalisedEdge2.dot(crossNorms);
                 double atanp2 = norm2.dot(norm1);
                 Vector3d insideCrossDeriv = crossDeriv(norm1, norm2, dnorm1, dnorm2);
-
-                double h = 0.0000001;
-                Vector3d derivPointMoved = derivPoint + m_parameters.extensionLength * h * m_binormals[derivativeIndex];
-                Vector3d normalisedEdge1Moved = triangleEdge1.normalized();
-                Vector3d normalisedEdge2Moved = (derivPointMoved - currentPoint).normalized();
-                Vector3d normalisedEdge3Moved = triangleEdge4.normalized();
-                Vector3d edgeVecDerivMoved = (normalisedEdge2Moved - normalisedEdge2)/h;
-                Vector3d norm1Moved = crossProd(triangleEdge1, normalisedEdge2Moved).normalized();
-                Vector3d norm2Moved = crossProd(normalisedEdge2Moved, triangleEdge4).normalized();
-                Vector3d dnorm1Moved = (norm1Moved - norm1)/h;
-                Vector3d dnorm2Moved = (norm2Moved - norm2)/h;
-                Vector3d crossNormsMoved = crossProd(norm1Moved, norm2Moved);
-                double atanp1Moved = normalisedEdge2Moved.dot(crossNormsMoved);
-                double atanp2Moved = norm2Moved.dot(norm1Moved);
-                Vector3d insideCrossDerivMoved = (crossNormsMoved - crossNorms)/h;
-
-                std::cout << "Main edge approx: " << edgeVecDerivMoved.transpose() << std::endl;
-                std::cout << "Main edge real: " << edgeVecDeriv.transpose() << std::endl;
-                std::cout << "norm1 moved: " << norm1Moved.transpose() << std::endl;
-                std::cout << "norm1 real: " << norm1.transpose() << std::endl;
-                std::cout << "dnorm1 approx: " << dnorm1Moved.transpose() << std::endl;
-                std::cout << "dnorm1 real: " << dnorm1.transpose() << std::endl;
-                std::cout << "dnorm2 approx: " << dnorm2Moved.transpose() << std::endl;
-                std::cout << "dnorm2 real: " << dnorm2.transpose() << std::endl;
-                std::cout << "crossderiv approx: " << insideCrossDerivMoved.transpose() << std::endl;
-                std::cout << "crossderiv real: " << insideCrossDeriv.transpose() << std::endl;
-
-
-
-                // TEST UP TO HERE
                 double datanp1 = dotDeriv(normalisedEdge2, crossNorms, edgeVecDeriv, insideCrossDeriv);
                 double datanp2 = dotDeriv(norm2, norm1, dnorm2, dnorm1);
                 double dda = atan2Deriv(atanp1, atanp2, datanp1, datanp2);
-                double dl1 = normDeriv(derivPoint, currentPoint, dDerivPoint, zeroVec);
+                double dl1 = normDiffDeriv(derivPoint, currentPoint, dDerivPoint, zeroVec);
                 double dihedralAngle = std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
                 double dMean = 0.25 * ((dl1 * dihedralAngle + edge2Length * dda)/area - dA*edge2Length*dihedralAngle/std::pow(area,2));
 
@@ -189,8 +163,9 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 if (triangle1.vertex2 >= nextSurface.curveStartIndex(curveCount)){
                     int derivativeIndexNghb1 = nextSurface.correctIndex(curveCount, triangle1.vertex2);
                     Vector3d dDerivPointNeighbour1 =  m_parameters.extensionLength * m_binormals[derivativeIndexNghb1];
-                    Vector3d nbghEdgeVecDeriv1 = normalVecDeriv(derivPointNeighbour1, currentPoint, dDerivPointNeighbour1, zeroVec);
-                    Vector3d dNghbNorm1 = crossDeriv(normalisedEdge1, normalisedEdge2, nbghEdgeVecDeriv1, zeroVec);
+                    Vector3d nbghEdgeVecDeriv1 = normalVecDiffDeriv(derivPointNeighbour1, currentPoint, dDerivPointNeighbour1, zeroVec);
+                    Vector3d dnbghNorm1Numerator = crossDeriv(triangleEdge1, triangleEdge2, nbghEdgeVecDeriv1, zeroVec);
+                    Vector3d dNghbNorm1 = normVecDeriv(norm1Numerator, dnbghNorm1Numerator);
                     Vector3d nghbInsideCrossDeriv1 = crossDeriv(norm1, norm2, dNghbNorm1, zeroVec);
                     double dNghbAtanp11 = dotDeriv(normalisedEdge2, crossNorms, zeroVec, nghbInsideCrossDeriv1);
                     double dNghbAtanp21 = dotDeriv(norm2, norm1, zeroVec, dNghbNorm1);
@@ -199,13 +174,15 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                     double nghbDt21 = angleDeriv(vertexAngle2, derivPoint, currentPoint, derivPointNeighbour2, zeroVec, zeroVec, zeroVec);
                     double nghbDA1 = triangleAreaDeriv(vertexAngle1, vertexAngle2, nghbDt11, nghbDt21, derivPointNeighbour1, derivPoint, derivPointNeighbour2, currentPoint, dDerivPointNeighbour1, zeroVec, zeroVec, zeroVec);
                     derivatives[derivativeIndexNghb1] += m_parameters.stiffnessRatio * (meanCurvature - m_parameters.desiredCurvature) * 0.25 * edge1Length * (ddNghbA1/area - dihedralAngle*nghbDA1/std::pow(area,2));
+                    
                 }
 
                 if (triangle2.vertex3 >= nextSurface.curveStartIndex(curveCount)){
                     int derivativeIndexNghb2 = nextSurface.correctIndex(curveCount, triangle2.vertex3);
                     Vector3d dDerivPointNeighbour2 =  m_parameters.extensionLength * m_binormals[derivativeIndexNghb2];
-                    Vector3d nbghEdgeVecDeriv2 = normalVecDeriv(derivPointNeighbour2, currentPoint, dDerivPointNeighbour2, zeroVec);
-                    Vector3d dNghbNorm2 = crossDeriv(normalisedEdge2, normalisedEdge3, zeroVec, nbghEdgeVecDeriv2);
+                    Vector3d nbghEdgeVecDeriv2 = normalVecDiffDeriv(derivPointNeighbour2, currentPoint, dDerivPointNeighbour2, zeroVec);
+                    Vector3d dnbghNorm2Numerator = crossDeriv(triangleEdge3, triangleEdge4, zeroVec, nbghEdgeVecDeriv2);
+                    Vector3d dNghbNorm2 = normVecDeriv(norm2Numerator, dnbghNorm2Numerator);
                     Vector3d nghbInsideCrossDeriv2 = crossDeriv(norm1, norm2, zeroVec, dNghbNorm2);
                     double dNghbAtanp12 = dotDeriv(normalisedEdge2, crossNorms, zeroVec, nghbInsideCrossDeriv2);
                     double dNghbAtanp22 = dotDeriv(norm2, norm1, dNghbNorm2, zeroVec);
@@ -219,6 +196,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 // Finally add the contributions to the derivatives
                 
                 derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature - m_parameters.desiredCurvature) * dMean + dGauss; 
+                
                 }
             }
         }
@@ -241,23 +219,29 @@ double EnergyFunction::evalEnergy(RadialSurface& extendedSurface)
         totalGauss += currentGauss;
         totalMean += m_parameters.stiffnessRatio / 2 * std::pow(currentMean - m_parameters.desiredCurvature,2);
     }
-    //std::cout << "Total: " << totalMean + totalGauss << std::endl;
     return totalMean + totalGauss;
 };
 
-Vector3d EnergyFunction::normalVecDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db){
+Vector3d EnergyFunction::normalVecDiffDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db){
     // Returns the derivative of (a-b)/|a-b|
     double norm = (a-b).norm();
     return (da-db)/norm - ((da-db).dot(a-b)/std::pow(norm,3)) * (a-b);
 };
 
-double EnergyFunction::normDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db){
+double EnergyFunction::normDiffDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db){
     // Returns the derivative of |a-b|
     double norm = (a-b).norm();
     if (norm == 0) {
         return 0;
     }
     return (a-b).dot(da-db)/norm;
+}
+Vector3d EnergyFunction::normVecDeriv(Vector3d &a, Vector3d &da)
+{
+    // Derivative of a/|a|
+    double anorm = a.norm();
+    double dnorm = a.dot(da)/anorm;
+    return (anorm * da - dnorm * a)/std::pow(anorm,2);
 }
 double EnergyFunction::atan2Deriv(double x, double y, double dx, double dy)
 {
@@ -274,8 +258,8 @@ double EnergyFunction::angleDeriv(double angle, Vector3d &a, Vector3d &b, Vector
 {
     // Finds the derivative for the angle between the vectors (a-b) and (c-b)
     
-    Vector3d normalVecDeriv1 = normalVecDeriv(a,b,da,db);
-    Vector3d normalVecDeriv2 = normalVecDeriv(c,b,dc,db);
+    Vector3d normalVecDeriv1 = normalVecDiffDeriv(a,b,da,db);
+    Vector3d normalVecDeriv2 = normalVecDiffDeriv(c,b,dc,db);
     Vector3d normalisedVec1 = (a-b).normalized();
     Vector3d normalisedVec2 = (c-b).normalized();
     double insideAngleDeriv = dotDeriv(normalisedVec1, normalisedVec2, normalVecDeriv1, normalVecDeriv2);
@@ -301,9 +285,9 @@ double EnergyFunction::triangleAreaDeriv(double angle1, double angle2, double da
     double l1 = (a-d).norm();
     double l2 = (b-d).norm();
     double l3 = (c-d).norm();
-    double dl1 = normDeriv(a,d,da,dd);
-    double dl2 = normDeriv(b,d,db,dd);
-    double dl3 = normDeriv(c,d,dc,dd);
+    double dl1 = normDiffDeriv(a,d,da,dd);
+    double dl2 = normDiffDeriv(b,d,db,dd);
+    double dl3 = normDiffDeriv(c,d,dc,dd);
     double part1 = 0.125 * (l1 * l2 * dangle1 * std::cos(angle1) + (l1*dl2 + l2*dl1)*std::sin(angle1));
     double part2 = 0.125 * (l2 * l3 * dangle2 * std::cos(angle2) + (l2*dl3 + l3*dl2)*std::sin(angle2));
     return part1 + part2;

@@ -15,8 +15,9 @@ class EnergyFunction {
 
         double operator()(const VectorXd& inputs, VectorXd& derivatives);
         double evalEnergy(RadialSurface& extendedSurface);
-        Vector3d normalVecDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db);
-        double normDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db);
+        Vector3d normalVecDiffDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db);
+        double normDiffDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db);
+        Vector3d normVecDeriv(Vector3d& a, Vector3d& da);
         double atan2Deriv(double x, double y, double dx, double dy);
         Vector3d crossProd(Vector3d &a, Vector3d &b);
         double angleDeriv(double angle, Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &da, Vector3d &db, Vector3d &dc);
