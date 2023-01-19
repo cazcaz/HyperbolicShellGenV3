@@ -9,23 +9,37 @@ int main(int, char**) {
 
     std::vector<ShellParams> parameterList;
     BatchGen massCalcer;
-    double desiredCurv;
-    //Push parameters to the parameterList
-        for (int j=0; j < 101; j++){
-            desiredCurv = 0.5-0.01*j;
-            for (int i=0; i < 11; i++) {
-                ShellParams parameters;
-                parameters.desiredCurvature = desiredCurv;
-                parameters.strainCoeff = 10*i;
-                parameterList.push_back(parameters);
-            }
+    double stiffChange = (10000-1)/10;
+    double curveChange = (0.0001 - 0.000001)/10;
+    double stiffness = 1;
+
+    ShellParams parameters;
+    parameters.centreX = 0;
+    parameters.centreY = 0;
+    parameters.centreZ = 0;
+    parameters.desiredCurvature = 0.000001;
+    parameters.expansions = 50;
+    parameters.resolution = 100;
+    parameters.extensionLength = 0.1;
+    parameters.stiffnessRatio = 1;
+
+
+    for (int j=0; j < 10; j++){
+        for (int k=0; k < 10; k++){
+            parameterList.push_back(parameters);
+            parameters.desiredCurvature += curveChange;
         }
+        parameters.desiredCurvature = 0.000001;
+    parameters.stiffnessRatio += stiffChange;
+    }
+
+    //Push parameters to the parameterList
 
     massCalcer.calculateAll(parameterList);
 
     // ShellParams parameters;
-    // parameters.expansions = 10;
-    // parameters.desiredCurvature = -0.1;
+    // parameters.expansions = 50;
+    // parameters.desiredCurvature = -2;
     // ShellGen shellGenerator(parameters);
     // shellGenerator.setInitCurve();
     // shellGenerator.expandCurveNTimes();

@@ -75,14 +75,14 @@ bool ShellGen::expandCurve() {
     }
     EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, radialDist);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 100;
+    param.max_iterations = 200;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input = 0 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.005 * VectorXd::Random(nextRingSize);
 
     // // Used to make a linear approx. of the derivative for testing
     // VectorXd inputChanged = input;
-    // double h = 0.000000001;
+    // double h = 0.00001;
     // inputChanged[10] += h;
     // VectorXd derivatives = VectorXd::Zero(nextRingSize);
     // double energy2;

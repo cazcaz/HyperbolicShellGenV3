@@ -9,5 +9,6 @@ struct ShellParams {
     double extensionLength = 0.1;
     double stiffnessRatio= 10;
     double desiredCurvature = 0.1;
-    double strainCoeff = 1;
+    double strainCoeff = 1000;
+    double lengthStiffness = 100;
 };
