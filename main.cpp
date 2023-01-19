@@ -11,22 +11,21 @@ int main(int, char**) {
     BatchGen massCalcer;
     double desiredCurv;
     //Push parameters to the parameterList
-    for (int i=0; i < 26; i++){
-        desiredCurv = -0.0001 - 0.1 * i;
-        for (int j=0; j < 26; j++){
-            ShellParams parameters;
-            parameters.desiredCurvature = desiredCurv;
-            parameters.stiffnessRatio = 0.001 + 0.1 * j;
-            parameterList.push_back(parameters);
+        for (int j=0; j < 101; j++){
+            desiredCurv = 0.5-0.01*j;
+            for (int i=0; i < 11; i++) {
+                ShellParams parameters;
+                parameters.desiredCurvature = desiredCurv;
+                parameters.strainCoeff = 10*i;
+                parameterList.push_back(parameters);
+            }
         }
-
-    }
 
     massCalcer.calculateAll(parameterList);
 
     // ShellParams parameters;
     // parameters.expansions = 10;
-    // parameters.desiredCurvature = 0;
+    // parameters.desiredCurvature = -0.1;
     // ShellGen shellGenerator(parameters);
     // shellGenerator.setInitCurve();
     // shellGenerator.expandCurveNTimes();

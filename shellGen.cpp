@@ -128,10 +128,12 @@ void ShellGen::expandCurveNTimes() {
     } else {
         for (int iteration = 0; iteration < m_parameters.expansions; iteration++){
             if (!expandCurve()){
+                m_parameters.expansions = iteration+1;
                 return;
             }
         }
     }
+    m_parameters.expansions = m_surface.getCurveCount();
 }
 
 int ShellGen::correctIndex(int index){

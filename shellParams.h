@@ -7,6 +7,7 @@ struct ShellParams {
     int resolution = 50;
     int expansions = 50;
     double extensionLength = 0.1;
-    double stiffnessRatio= 0.01;
+    double stiffnessRatio= 10;
     double desiredCurvature = 0.1;
+    double strainCoeff = 1;
 };

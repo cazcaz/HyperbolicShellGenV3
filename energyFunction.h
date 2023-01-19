@@ -31,4 +31,6 @@ class EnergyFunction {
         std::vector<Vector3d> m_prevCurve;
         struct ShellParams& m_parameters;
         double m_radialDist;
+        bool m_firstRun;
+        std::vector<double> m_origTriangleSizes;
 };

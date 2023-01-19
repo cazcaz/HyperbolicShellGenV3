@@ -16,12 +16,23 @@ EnergyFunction::EnergyFunction(RadialSurface& surface,
                                m_normals(normals) ,
                                m_binormals(binormals) ,
                                m_parameters(parameters) ,
-                               m_radialDist(radialDist) {
+                               m_radialDist(radialDist),
+                               m_firstRun(true) {
 };
 
 EnergyFunction::~EnergyFunction() = default;
 
 double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives){
+    
+    // Current energy function is defined by 
+    //
+    //  B/2 * (H-c0)**2 + K + C * (A-A0)^2
+    //
+    // Summed over all vertices of the previous ring
+    //
+    // H: Mean curvature, K: Gauss curvature, B: Bending stiffness, C: Stretch Resistance, A: Current triangle area, A0: Original vertex area
+
+
     std::vector<Vector3d> nextCurve;
     int curveCount = m_surface.getCurveCount();
     double sParam;
@@ -32,8 +43,6 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     }
     RadialSurface nextSurface(m_surface);
     nextSurface.addCurve(nextCurve);
-    
-    //Reimplementation of finding curvature and derivatives, moved into this space to keep it all together
 
     // Pre-initialisations to avoid doing it every loop
     Vector3d edge;
@@ -49,9 +58,16 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     Vector3d norm1;
     Vector3d norm2;
     // End
+
     double totalEnergy = 0;
+
+    // Loop over every vertex in the previous curve
+
     for (int curveLoc = 0; curveLoc < nextSurface.getCurveLength(curveCount-1); curveLoc++) {
         int index = nextSurface.curveStartIndex(curveCount-1) + curveLoc;
+
+        //Code to find pairs of adjacent triangles coming off the vertex
+
         auto key_selector = [](auto pair){return pair.first;};
         double curvatureSum = 0;
         std::vector<int> completedEdges;
@@ -71,8 +87,14 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
         }
         std::vector<int> keys(pairTriangles.size());
         transform(pairTriangles.begin(), pairTriangles.end(), keys.begin(), key_selector);
+
+        // End of pair finding code
+
         double area = 0;
         double angleSum = 0;
+        
+        // Goes through pairs of edges adjacent to eachother and calculates curvatures and areas of the triangles formed
+
         for (int trianglePairIndex : keys) {
             if (pairTriangles[trianglePairIndex].size() == 2) {
                 Triangle triangle1 = pairTriangles[trianglePairIndex][0];
@@ -92,13 +114,23 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 triangleEdge4 = nextSurface.getPos(triangle2.vertex3) - currentPoint;
                 norm1 = crossProd(triangleEdge1, triangleEdge2).normalized();
                 norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
-                area += 0.125 * edge1Length * edge2Length * std::sin(vertexAngle);
+                double triangleArea = 0.125 * edge1Length * edge2Length * std::sin(vertexAngle);
+                area += triangleArea;
                 angleSum += vertexAngle; 
                 curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
             }
         }
+
+        if (m_firstRun) {
+            m_origTriangleSizes.push_back(area);
+        }
+
         double meanCurvature = (0.25 * curvatureSum)/area;
         double gaussCurvature = (2 * M_PI - angleSum)/area;
+
+        // End of curvature and area calculations
+
+        // Goes through the same pairs to find the derivative of the energy function at each vertex
 
         for (int trianglePairIndex : keys) {
             if (pairTriangles[trianglePairIndex].size() == 2) {
@@ -195,13 +227,21 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 }
                 // Finally add the contributions to the derivatives
                 
-                derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature - m_parameters.desiredCurvature) * dMean + (gaussCurvature - m_parameters.desiredCurvature)* dGauss; 
+                derivatives[derivativeIndex] += m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA + (gaussCurvature - m_parameters.desiredCurvature) * dGauss + m_parameters.stiffnessRatio * (meanCurvature - m_parameters.desiredCurvature) * dMean;//  + m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA; 
                 
                 }
             }
         }
-        totalEnergy += m_parameters.stiffnessRatio * 0.5 * std::pow(meanCurvature - m_parameters.desiredCurvature,2) + 0.5 * std::pow(gaussCurvature - m_parameters.desiredCurvature,2);
+        double meanCurvatureContribution = m_parameters.stiffnessRatio * 0.5 * std::pow(meanCurvature - m_parameters.desiredCurvature,2);
+        double gaussCurvatureContribution = 0.5 * std::pow(gaussCurvature - m_parameters.desiredCurvature,2);
+        double stretchingEnergyContribution = m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2);
+
+        // Add on the contribution to enery from each vertex
+        totalEnergy += meanCurvatureContribution + gaussCurvatureContribution + stretchingEnergyContribution;
     }
+
+    // End of loop over the previous curve vertices
+    m_firstRun = false;
     return totalEnergy;
 };
 
