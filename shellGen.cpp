@@ -17,8 +17,8 @@ void ShellGen::setInitCurve() {
     std::vector<Vector3d> initCurve;
     std::vector<Vector3d> secondCurve;
     CircleGen circlemaker;
-    circlemaker.makeCircle(1, centre, m_parameters.resolution, initCurve);
-    circlemaker.makeCircle(1 + m_parameters.extensionLength, centre, m_parameters.resolution, secondCurve);
+    circlemaker.makeCircle(m_parameters.radius, centre, m_parameters.resolution, initCurve);
+    circlemaker.makeCircle(m_parameters.radius + m_parameters.extensionLength, centre, m_parameters.resolution, secondCurve);
     m_surface.addCurve(initCurve);
     m_surface.addCurve(secondCurve);
 }
@@ -31,12 +31,9 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> normals;
     std::vector<Vector3d> binormals;
     std::vector<Vector3d> tangents;
-    double initialDist = 1;
-    double radialDist = 1 + (curveCount-1) * m_parameters.extensionLength;
-    int nextRingSize = int(M_1_PI/(std::asin(1/radialDist * std::sin(M_1_PI/m_parameters.resolution))))/4;
-    if (nextRingSize < m_parameters.resolution) {
-        nextRingSize = m_parameters.resolution;
-    }
+    double initialDist = m_parameters.radius;
+    double radialDist = m_parameters.radius + (curveCount-1) * m_parameters.extensionLength;
+    int nextRingSize = m_parameters.resolution;//int(radialDist/initialDist * m_parameters.resolution);
     if (curveCount == 1) {
         for (Vector3d firstCurvePoint : m_surface.getCurve(0)){
             normals.push_back(firstCurvePoint.normalized());
@@ -53,7 +50,8 @@ bool ShellGen::expandCurve() {
     //Nicely behaved tangents
     double angleChange = 2 * M_PI / nextRingSize;
     for (int i =0; i<nextRingSize;i++){
-            Vector3d nextTangent(-std::sin(angleChange * i), std::cos(angleChange *i), 0);
+            Vector3d nextTangent(-std::sin(angleChange * i), std::cos(angleChange * i), 0);  
+            //Vector3d nextTangent = m_surface.getPoint(curveCount-1, angleChange * i+0.0001) - m_surface.getPoint(curveCount-1, angleChange * i -0.0001);
             nextTangent.normalize();
             Vector3d nextBinormal(normals[i][1]*nextTangent[2] - normals[i][2]*nextTangent[1] ,normals[i][2]*nextTangent[0] - normals[i][0]*nextTangent[2], normals[i][0]*nextTangent[1] - normals[i][1]*nextTangent[0]);
             nextBinormal.normalize();
@@ -75,29 +73,29 @@ bool ShellGen::expandCurve() {
     }
     EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, radialDist);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 200;
+    param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input = 0.005 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
 
-    // // Used to make a linear approx. of the derivative for testing
-    // VectorXd inputChanged = input;
-    // double h = 0.00001;
-    // inputChanged[10] += h;
-    // VectorXd derivatives = VectorXd::Zero(nextRingSize);
-    // double energy2;
-    // energy2 = energyFunctional(inputChanged, derivatives);
-    // energy = energyFunctional(input, derivatives);
-    // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
-    // std::cout << "Real: " << derivatives[10] << std::endl;
+    // Used to make a linear approx. of the derivative for testing
+    VectorXd inputChanged = input;
+    double h = 0.00000001;
+    inputChanged[10] += h;
+    VectorXd derivatives = VectorXd::Zero(nextRingSize);
+    double energy2;
+    energy2 = energyFunctional(inputChanged, derivatives);
+    energy = energyFunctional(input, derivatives);
+    std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
+    std::cout << "Real: " << derivatives[10] << std::endl;
     // std::cout << derivatives.transpose() << std::endl;
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
-        if (iterCount == 100) {
-            //m_parameters.extensionLength *= 0.5;
-            //std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-            //success = false;
-        }
+        // if (iterCount == 100) {
+        //     m_parameters.extensionLength *= 0.5;
+        //     std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+        //     success = false;
+        // }
     } catch(...) {
         //std::cout << "Failed from error in calculation." << std::endl;
         return false;
