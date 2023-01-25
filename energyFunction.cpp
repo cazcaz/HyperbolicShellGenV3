@@ -45,19 +45,8 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     nextSurface.addCurve(nextCurve);
     double rescaleTerm = rescaleEnergyFunction(m_radialDist, m_parameters.radius);
     // Pre-initialisations to avoid doing it every loop
-    Vector3d edge;
-    double length;
-    Vector3d triangleEdge1;
-    Vector3d triangleEdge2;
-    double edge1Length;
-    double edge2Length;
-    double edge3Length;
-    double vertexAngle;
-    Vector3d triangleEdge3;
-    Vector3d triangleEdge4;
-    Vector3d norm1;
-    Vector3d norm2;
-    // End
+    Vector3d edge, triangleEdge1, triangleEdge2, triangleEdge3, triangleEdge4, norm1, norm2, prevVec, currentVec, nextVec;
+    double length, edge1Length, edge2Length, edge3Length, vertexAngle;
 
     double totalEnergy = 0;
 
@@ -65,9 +54,6 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     // Also calculate the derivatives for the lengths and adds them
     int nextCurveLength = nextSurface.getCurveLength(curveCount);
     double totalLength = 0;
-    Vector3d prevVec;
-    Vector3d currentVec;
-    Vector3d nextVec;
     for (int outerCurveIndex = 0; outerCurveIndex < nextCurveLength; outerCurveIndex++) {
         //Get the 3 vectors contributing to length and its derivatives, corrected for the boundaries of the curve
         currentVec = nextCurve[outerCurveIndex];
@@ -85,7 +71,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
         totalLength += (currentVec - prevVec).norm();
         Vector3d zeroVec(0,0,0);
         Vector3d currentDeriv = m_parameters.extensionLength*m_binormals[outerCurveIndex];
-        derivatives[outerCurveIndex] = normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(currentVec, nextVec, currentDeriv, zeroVec);
+        derivatives[outerCurveIndex] = 0;//normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(currentVec, nextVec, currentDeriv, zeroVec);
         }
     // Now we have the derivatives of the length at each vertex, we can multiply them by the coefficient depending on the total length to get the correct values
     double lengthDerivCoeff = m_parameters.lengthStiffness * (totalLength - lengthFunction(m_radialDist,m_parameters.radius));
@@ -168,10 +154,25 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 triangle2 = pairTriangles[trianglePairIndex][0];
             }
             // Find derivatives of energy contributions
-            if (triangle1.vertex3 >= nextSurface.curveStartIndex(curveCount)) {
+            int nextCurveStartPoint = nextSurface.curveStartIndex(curveCount);
+            std::vector<int> neededDerivativeIndices;
+            if (triangle1.vertex3 >= nextCurveStartPoint) {
+                neededDerivativeIndices.push_back(triangle1.vertex3);
+            }
+            if (triangle1.vertex2 >= nextCurveStartPoint) {
+                neededDerivativeIndices.push_back(triangle1.vertex2);
+            }
+            if (triangle2.vertex3 >= nextCurveStartPoint) {
+                neededDerivativeIndices.push_back(triangle2.vertex3);
+            }
 
+            for (int nextFocusPoint : neededDerivativeIndices) {
                 // Reinitialise necessary vectors and doubles
 
+                bool focusedIndex = (triangle1.vertex3 == nextFocusPoint);
+                bool leftFocus = (triangle1.vertex2 == nextFocusPoint);
+                int derivativeIndex = nextSurface.correctIndex(curveCount, nextFocusPoint);
+                
                 triangleEdge1 = nextSurface.getPos(triangle1.vertex2) - currentPoint;
                 triangleEdge2 = nextSurface.getPos(triangle1.vertex3) - currentPoint;
                 triangleEdge3 = nextSurface.getPos(triangle2.vertex2) - currentPoint;
@@ -183,57 +184,39 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
 
                 // Gauss derivative calculation
-
-                int derivativeSurfaceIndex = triangle1.vertex3;
-                int derivativeIndex = nextSurface.correctIndex(curveCount, triangle1.vertex3);
-                Vector3d derivPoint = nextSurface.getPos(derivativeSurfaceIndex);
-                Vector3d derivPointNeighbour1 = nextSurface.getPos(triangle1.vertex2);
-                Vector3d derivPointNeighbour2 = nextSurface.getPos(triangle2.vertex3);
-                Vector3d dDerivPoint = m_parameters.extensionLength * m_binormals[derivativeIndex];
+                
                 Vector3d zeroVec(0,0,0);
+                Vector3d centrePoint = nextSurface.getPos(triangle1.vertex3);
+                Vector3d leftNeighbour = nextSurface.getPos(triangle1.vertex2);
+                Vector3d rightNeighbour = nextSurface.getPos(triangle2.vertex3);
+                Vector3d dCentrePoint = (focusedIndex) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;
+                Vector3d dLeftNeighbour = (!focusedIndex && leftFocus) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;
+                Vector3d dRightNeighbour = (!focusedIndex && !leftFocus) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;
+
                 double vertexAngle1 = triangleEdge1.normalized().dot(triangleEdge2.normalized());
                 double vertexAngle2 = triangleEdge3.normalized().dot(triangleEdge4.normalized());
-                double dt1 = angleDeriv(vertexAngle1, derivPointNeighbour1, currentPoint, derivPoint, zeroVec, zeroVec, dDerivPoint);
-                double dt2 = angleDeriv(vertexAngle2, derivPoint, currentPoint, derivPointNeighbour2, dDerivPoint, zeroVec, zeroVec);
+                double dt1 = angleDeriv(vertexAngle1, leftNeighbour, currentPoint, centrePoint, dLeftNeighbour, zeroVec, dCentrePoint);
+                double dt2 = angleDeriv(vertexAngle2, centrePoint, currentPoint, rightNeighbour, dCentrePoint, zeroVec, dRightNeighbour);
                 double dl1, dl2, dl3;
-                double dA = triangleAreaDeriv(vertexAngle1, vertexAngle2, dt1, dt2, derivPointNeighbour1, derivPoint, derivPointNeighbour2, currentPoint, zeroVec, dDerivPoint, zeroVec, zeroVec, dl1, dl2, dl3);
-                double dGauss = -(dt1+dt2)/area - dA * (gaussCurvature)/std::pow(area,2);
+                double dA = triangleAreaDeriv(vertexAngle1, vertexAngle2, dt1, dt2, leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dl1, dl2, dl3);
+                
 
                 // Mean derivative calculation
-                double dihedralAngleMain;
-                double dihedralDerivMain;
-                dihedralAngleDeriv(derivPointNeighbour1, derivPoint, derivPointNeighbour2, currentPoint, zeroVec, dDerivPoint, zeroVec, zeroVec, dihedralAngleMain, dihedralDerivMain);
+                double dihedralAngle;
+                double dihedralDeriv;
+                dihedralAngleDeriv(leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dihedralAngle, dihedralDeriv);
                 
-                double dMean = 0.25 * (dl2 * dihedralAngleMain + edge2Length * dihedralDerivMain)/area - dA*meanCurvature/area;
-
-                // Each point has 3 contributions, so we calculate those contributions on the neighbouring vertices and add them
-                if (triangle1.vertex2 >= nextSurface.curveStartIndex(curveCount)){
-                    int derivativeIndexNghb1 = nextSurface.correctIndex(curveCount, triangle1.vertex2);
-                    Vector3d dDerivPointNeighbour1 =  m_parameters.extensionLength * m_binormals[derivativeIndexNghb1];
-                    double dihedralAngleSide1;
-                    double dihedralDerivSide1;
-                    dihedralAngleDeriv(derivPointNeighbour1, derivPoint, derivPointNeighbour2, currentPoint, dDerivPointNeighbour1, zeroVec, zeroVec, zeroVec, dihedralAngleSide1, dihedralDerivSide1);
-                    derivatives[derivativeIndexNghb1] += 0.25 * edge1Length * dihedralDerivSide1/area;
-                }
-
-                if (triangle2.vertex3 >= nextSurface.curveStartIndex(curveCount)){
-                    int derivativeIndexNghb2 = nextSurface.correctIndex(curveCount, triangle2.vertex3);
-                    Vector3d dDerivPointNeighbour2 =  m_parameters.extensionLength * m_binormals[derivativeIndexNghb2];
-                    double dihedralAngleSide2;
-                    double dihedralDerivSide2;
-                    dihedralAngleDeriv(derivPointNeighbour1, derivPoint, derivPointNeighbour2, currentPoint, zeroVec, zeroVec, dDerivPointNeighbour2, zeroVec, dihedralAngleSide2, dihedralDerivSide2);
-                    derivatives[derivativeIndexNghb2] += 0.25 * edge3Length * dihedralDerivSide2/area;
-                    
-                }
+                double dGauss = (focusedIndex) ? -(dt1+dt2)/area - dA * (gaussCurvature)/std::pow(area,2) : 0;
+                double dMean = (focusedIndex) ? 0.25 * (dl2 * dihedralAngle + edge2Length * dihedralDeriv)/area - dA*meanCurvature/area : 0.25 * edge2Length * dihedralDeriv/area;
+                double dStretch = (focusedIndex) ? m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA : 0;
                 // Finally add the contributions to the derivatives
-                
-                derivatives[derivativeIndex] += dMean;//m_parameters.stiffnessRatio * (meanCurvature) * dMean + m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA;//  + (gaussCurvature - m_parameters.desiredCurvature) * dGauss;
+                derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature) * dMean + dStretch;
                 }
             }
         }
-        double meanCurvatureContribution = meanCurvature;//meanCurvature;//m_parameters.stiffnessRatio * 0.5 * std::pow(meanCurvature,2);
-        double gaussCurvatureContribution = 0;//gaussCurvature;
-        double stretchingEnergyContribution = 0;//m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2);
+        double meanCurvatureContribution = m_parameters.stiffnessRatio * 0.5 * std::pow(meanCurvature,2);
+        double gaussCurvatureContribution = 0;
+        double stretchingEnergyContribution = m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2);
         double lengthEnergyContribution = 0;//0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist,m_parameters.radius),2);
 
         // Add on the contribution to enery from each vertex
@@ -244,8 +227,8 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     // End of loop over the previous curve vertices
     m_firstRun = false;
 
-    //derivatives *= rescaleTerm;
-    return totalEnergy;//rescaleTerm * totalEnergy;
+    derivatives *= rescaleTerm;
+    return rescaleTerm * totalEnergy;
 };
 
 double EnergyFunction::evalEnergy(RadialSurface& extendedSurface)
