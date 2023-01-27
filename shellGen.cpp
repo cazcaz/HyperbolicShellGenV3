@@ -33,7 +33,7 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> tangents;
     double initialDist = m_parameters.radius;
     double radialDist = m_parameters.radius + (curveCount-1) * m_parameters.extensionLength;
-    int nextRingSize = int(radialDist/initialDist * m_parameters.resolution);
+    int nextRingSize = radialDist/initialDist * m_parameters.resolution;
     if (curveCount == 1) {
         for (Vector3d firstCurvePoint : m_surface.getCurve(0)){
             normals.push_back(firstCurvePoint.normalized());
@@ -76,7 +76,7 @@ bool ShellGen::expandCurve() {
     param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input = 0.0001 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.1 * VectorXd::Random(nextRingSize);
 
     // Used to make a linear approx. of the derivative for testing
     // VectorXd inputChanged = input;

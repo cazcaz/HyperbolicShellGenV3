@@ -210,13 +210,13 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 double dMean = (focusedIndex) ? 0.25 * (dl2 * dihedralAngle + edge2Length * dihedralDeriv)/area - dA*meanCurvature/area : 0.25 * edge2Length * dihedralDeriv/area;
                 double dStretch = (focusedIndex) ? m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA : 0;
                 // Finally add the contributions to the derivatives
-                derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature) * dMean + dStretch;
+                derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature) * dMean;// + dStretch;
                 }
             }
         }
         double meanCurvatureContribution = m_parameters.stiffnessRatio * 0.5 * std::pow(meanCurvature,2);
         double gaussCurvatureContribution = 0;
-        double stretchingEnergyContribution = m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2);
+        double stretchingEnergyContribution = 0;//m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2);
         double lengthEnergyContribution = 0;//0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist,m_parameters.radius),2);
 
         // Add on the contribution to enery from each vertex
