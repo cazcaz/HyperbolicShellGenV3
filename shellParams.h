@@ -11,6 +11,6 @@ struct ShellParams {
     double meanStiffness = 0.0001;
     double gaussStiffness = 0.1;
     double desiredCurvature = -0.01;
-    double strainCoeff = 10;
-    double lengthStiffness = 100;
+    double strainCoeff = 100000;
+    double lengthStiffness = 10;
 };

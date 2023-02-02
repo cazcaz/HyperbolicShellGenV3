@@ -8,7 +8,7 @@
 
 using Eigen::Vector3d;
 
-ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) {};
+ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , initLength(parameters.extensionLength) {};
 ShellGen::~ShellGen() {};
 
 void ShellGen::setInitCurve() {
@@ -18,7 +18,8 @@ void ShellGen::setInitCurve() {
     std::vector<Vector3d> secondCurve;
     CircleGen circlemaker;
     circlemaker.makeCircle(m_parameters.radius, centre, m_parameters.resolution, initCurve);
-    circlemaker.makeCircle(m_parameters.radius + m_parameters.extensionLength, centre, m_parameters.resolution, secondCurve);
+    int nextRingRes = lengthFunction(m_parameters.radius + initLength, m_parameters.radius) * m_parameters.resolution / (2 * M_PI * m_parameters.radius);
+    circlemaker.makeCircle(m_parameters.radius + initLength, centre, nextRingRes, secondCurve);
     m_surface.addCurve(initCurve);
     m_surface.addCurve(secondCurve);
 }
@@ -32,8 +33,10 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> binormals;
     std::vector<Vector3d> tangents;
     double initialDist = m_parameters.radius;
-    double radialDist = m_parameters.radius + (curveCount-1) * m_parameters.extensionLength;
-    int nextRingSize = m_parameters.resolution;//radialDist/initialDist * m_parameters.resolution;
+    double radialDist = m_parameters.radius + (curveCount-1) * initLength;
+    double lon = lengthFunction(radialDist, initialDist);
+    int nextRingSize = int(lengthFunction(radialDist + initLength, initialDist) * m_parameters.resolution / (2 * M_PI * initialDist));
+    std::cout << nextRingSize << std::endl;
     if (curveCount == 1) {
         for (Vector3d firstCurvePoint : m_surface.getCurve(0)){
             normals.push_back(firstCurvePoint.normalized());
@@ -71,7 +74,7 @@ bool ShellGen::expandCurve() {
         Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
         extendedPrevCurve.push_back(nextPoint);
     }
-    EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, radialDist);
+    EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, radialDist + m_parameters.extensionLength);
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
@@ -79,15 +82,15 @@ bool ShellGen::expandCurve() {
     VectorXd input = 0.1 * VectorXd::Random(nextRingSize);
 
     // Used to make a linear approx. of the derivative for testing
-    // VectorXd inputChanged = input;
-    // double h = 0.00000001;
-    // inputChanged[10] += h;
-    // VectorXd derivatives = VectorXd::Zero(nextRingSize);
-    // double energy2;
-    // energy2 = energyFunctional(inputChanged, derivatives);
-    // energy = energyFunctional(input, derivatives);
-    // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
-    // std::cout << "Real: " << derivatives[10] << std::endl;
+    VectorXd inputChanged = input;
+    double h = 0.00000001;
+    inputChanged[10] += h;
+    VectorXd derivatives = VectorXd::Zero(nextRingSize);
+    double energy2;
+    energy2 = energyFunctional(inputChanged, derivatives);
+    energy = energyFunctional(input, derivatives);
+    std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
+    std::cout << "Real: " << derivatives[10] << std::endl;
     //std::cout << derivatives.transpose() << std::endl;
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
@@ -159,4 +162,11 @@ void ShellGen::printSurface() {
     surfaceFile.close();
 }
 
-
+double ShellGen::lengthFunction(double t, double t0){
+    double desCurv = m_parameters.desiredCurvature;
+    if (desCurv < 0) {
+        desCurv *= -1;
+    }
+    double sqrtDC = std::sqrt(desCurv);
+    return 2 * M_PI * ( 1/sqrtDC * std::sinh(sqrtDC * (t-t0)) + t0);
+};

@@ -22,9 +22,12 @@ class ShellGen {
 
         int correctIndex(int index);
 
+        double lengthFunction(double t, double t0);
+
         void printSurface();
 
     private:
         struct ShellParams& m_parameters;
         RadialSurface m_surface;
+        double initLength;
 };

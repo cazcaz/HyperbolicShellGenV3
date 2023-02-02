@@ -35,8 +35,8 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
 
     //Use these booleans to quickly enable and disable wanted energy contributions
     bool meanCurvatureEnergy = true;
-    bool gaussCurvatureEnergy = true;
-    bool lengthEnergy = false;
+    bool gaussCurvatureEnergy = false;
+    bool lengthEnergy = true;
     bool areaEnergy = false;
 
     std::vector<Vector3d> nextCurve;
@@ -79,6 +79,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
         derivatives[outerCurveIndex] = (lengthEnergy) ? normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) : 0;
         }
     // Now we have the derivatives of the length at each vertex, we can multiply them by the coefficient depending on the total length to get the correct values
+    double lon = lengthFunction(m_radialDist ,m_parameters.radius);
     double lengthDerivCoeff = m_parameters.lengthStiffness * (totalLength - lengthFunction(m_radialDist,m_parameters.radius));
     derivatives *= lengthDerivCoeff;
 
@@ -392,5 +393,5 @@ double EnergyFunction::rescaleEnergyFunction(double t, double t0, int nextCurveL
     } else {
         multiplier *= m_parameters.meanStiffness;
     }
-    return 1/(lengthFunction(t,t0));
+    return 1/(nextCurveLength * lengthFunction(t,t0));
 };
