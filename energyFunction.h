@@ -26,7 +26,7 @@ class EnergyFunction {
         void dihedralAngleDeriv(Vector3d& a, Vector3d& b, Vector3d& c, Vector3d& d, Vector3d& da, Vector3d& db, Vector3d& dc, Vector3d& dd, double& angleResult, double& derivResult);
         double triangleAreaDeriv(double angle1, double angle2, double dangle1, double dangle2 ,Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &d, Vector3d &da, Vector3d &db, Vector3d &dc, Vector3d& dd, double& dl1, double& dl2, double& dl3);
         double lengthFunction(double t, double t0);
-        double rescaleEnergyFunction(double t, double t0);
+        double rescaleEnergyFunction(double t, double t0, int nextCurveLength);
     private:
         RadialSurface m_surface;
         std::vector<Vector3d> m_normals;

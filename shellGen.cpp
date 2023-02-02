@@ -33,7 +33,7 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> tangents;
     double initialDist = m_parameters.radius;
     double radialDist = m_parameters.radius + (curveCount-1) * m_parameters.extensionLength;
-    int nextRingSize = radialDist/initialDist * m_parameters.resolution;
+    int nextRingSize = m_parameters.resolution;//radialDist/initialDist * m_parameters.resolution;
     if (curveCount == 1) {
         for (Vector3d firstCurvePoint : m_surface.getCurve(0)){
             normals.push_back(firstCurvePoint.normalized());
@@ -88,14 +88,14 @@ bool ShellGen::expandCurve() {
     // energy = energyFunctional(input, derivatives);
     // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
     // std::cout << "Real: " << derivatives[10] << std::endl;
-    // std::cout << derivatives.transpose() << std::endl;
+    //std::cout << derivatives.transpose() << std::endl;
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
-        // if (iterCount == 100) {
-        //     m_parameters.extensionLength *= 0.5;
-        //     std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-        //     success = false;
-        // }
+        if (iterCount == 100) {
+            m_parameters.extensionLength *= 0.5;
+            //std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            //success = false;
+        }
     } catch(...) {
         //std::cout << "Failed from error in calculation." << std::endl;
         return false;
@@ -125,9 +125,8 @@ void ShellGen::expandCurveNTimes() {
         return;
     } else {
         for (int iteration = 0; iteration < m_parameters.expansions; iteration++){
-            std::cout << iteration << std::endl;
             if (!expandCurve()){
-                m_parameters.expansions = iteration+1;
+                m_parameters.expansions = iteration;
                 return;
             }
         }

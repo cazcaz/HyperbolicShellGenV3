@@ -33,6 +33,11 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     //
     // H: Mean curvature, K: Gauss curvature, B: Bending stiffness, C: Stretch Resistance, A: Current triangle area, A0: Original vertex area
 
+    //Use these booleans to quickly enable and disable wanted energy contributions
+    bool meanCurvatureEnergy = true;
+    bool gaussCurvatureEnergy = true;
+    bool lengthEnergy = false;
+    bool areaEnergy = false;
 
     std::vector<Vector3d> nextCurve;
     int curveCount = m_surface.getCurveCount();
@@ -43,17 +48,17 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     }
     RadialSurface nextSurface(m_surface);
     nextSurface.addCurve(nextCurve);
-    double rescaleTerm = rescaleEnergyFunction(m_radialDist, m_parameters.radius);
     // Pre-initialisations to avoid doing it every loop
     Vector3d edge, triangleEdge1, triangleEdge2, triangleEdge3, triangleEdge4, norm1, norm2, prevVec, currentVec, nextVec;
     double length, edge1Length, edge2Length, edge3Length, vertexAngle;
-
-    double totalEnergy = 0;
-
-    // Loop over every vertex of the new curve to find the length of the next curve
-    // Also calculate the derivatives for the lengths and adds them
     int nextCurveLength = nextSurface.getCurveLength(curveCount);
     double totalLength = 0;
+
+    double totalEnergy = 0;
+    double rescaleTerm = rescaleEnergyFunction(m_radialDist, m_parameters.radius, nextCurveLength);
+    // Loop over every vertex of the new curve to find the length of the next curve
+    // Also calculate the derivatives for the lengths and adds them
+    
     for (int outerCurveIndex = 0; outerCurveIndex < nextCurveLength; outerCurveIndex++) {
         //Get the 3 vectors contributing to length and its derivatives, corrected for the boundaries of the curve
         currentVec = nextCurve[outerCurveIndex];
@@ -71,7 +76,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
         totalLength += (currentVec - prevVec).norm();
         Vector3d zeroVec(0,0,0);
         Vector3d currentDeriv = m_parameters.extensionLength*m_binormals[outerCurveIndex];
-        derivatives[outerCurveIndex] = 0;//normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(currentVec, nextVec, currentDeriv, zeroVec);
+        derivatives[outerCurveIndex] = (lengthEnergy) ? normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) : 0;
         }
     // Now we have the derivatives of the length at each vertex, we can multiply them by the coefficient depending on the total length to get the correct values
     double lengthDerivCoeff = m_parameters.lengthStiffness * (totalLength - lengthFunction(m_radialDist,m_parameters.radius));
@@ -149,6 +154,11 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
             if (pairTriangles[trianglePairIndex].size() == 2) {
             Triangle triangle1 = pairTriangles[trianglePairIndex][0];
             Triangle triangle2 = pairTriangles[trianglePairIndex][1];
+
+            // std::cout << "Triangle Pair" << std::endl;
+            // std::cout << triangle1.vertex1 << " " << triangle1.vertex2 <<" " << triangle1.vertex3 << std::endl;
+            // std::cout << triangle2.vertex1 <<" " << triangle2.vertex2 <<" " << triangle2.vertex3 << std::endl;
+
             if (triangle1.vertex2 == triangle2.vertex3) {
                 triangle1 = triangle2;
                 triangle2 = pairTriangles[trianglePairIndex][0];
@@ -199,31 +209,45 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 double dt2 = angleDeriv(vertexAngle2, centrePoint, currentPoint, rightNeighbour, dCentrePoint, zeroVec, dRightNeighbour);
                 double dl1, dl2, dl3;
                 double dA = triangleAreaDeriv(vertexAngle1, vertexAngle2, dt1, dt2, leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dl1, dl2, dl3);
-                
-
+            
                 // Mean derivative calculation
                 double dihedralAngle;
                 double dihedralDeriv;
                 dihedralAngleDeriv(leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dihedralAngle, dihedralDeriv);
                 
                 double dGauss = (focusedIndex) ? -(dt1+dt2)/area - dA * (gaussCurvature)/std::pow(area,2) : 0;
+                // if (derivativeIndex == 10) {
+                    
+                //     if (focusedIndex) {
+                //         std::cout << "Curve Index" << curveLoc << " " <<  dGauss << std::endl;
+                //         std::cout << "Triangle Contributer" << std::endl;
+                //         std::cout << triangle1.vertex1 << " " << triangle1.vertex2 <<" " << triangle1.vertex3 << std::endl;
+                //         std::cout << triangle2.vertex1 <<" " << triangle2.vertex2 <<" " << triangle2.vertex3 << std::endl;
+                //     }
+                // } 
                 double dMean = (focusedIndex) ? 0.25 * (dl2 * dihedralAngle + edge2Length * dihedralDeriv)/area - dA*meanCurvature/area : 0.25 * edge2Length * dihedralDeriv/area;
                 double dStretch = (focusedIndex) ? m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA : 0;
+                
+                double meanCurvatureDerivContribution = (meanCurvatureEnergy) ? m_parameters.meanStiffness * (meanCurvature) * dMean : 0;
+                double gaussCurvatureDerivContribution = (gaussCurvatureEnergy) ? m_parameters.gaussStiffness * (gaussCurvature - m_parameters.desiredCurvature) * dGauss : 0;
+                double stretchDerivContribution =  (areaEnergy) ? m_parameters.strainCoeff * (dStretch) : 0;
+
                 // Finally add the contributions to the derivatives
-                derivatives[derivativeIndex] += m_parameters.stiffnessRatio * (meanCurvature) * dMean;// + dStretch;
+                derivatives[derivativeIndex] +=  meanCurvatureDerivContribution + gaussCurvatureDerivContribution + stretchDerivContribution;
                 }
             }
         }
-        double meanCurvatureContribution = m_parameters.stiffnessRatio * 0.5 * std::pow(meanCurvature,2);
-        double gaussCurvatureContribution = 0;
-        double stretchingEnergyContribution = 0;//m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2);
-        double lengthEnergyContribution = 0;//0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist,m_parameters.radius),2);
+        double meanCurvatureContribution = (meanCurvatureEnergy) ? m_parameters.meanStiffness * 0.5 * std::pow(meanCurvature,2) : 0;
+        double gaussCurvatureContribution = (gaussCurvatureEnergy) ? m_parameters.gaussStiffness * std::pow(gaussCurvature - m_parameters.desiredCurvature,2) : 0;
+        double stretchingEnergyContribution = (areaEnergy) ? m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2) : 0;
+        
 
         // Add on the contribution to enery from each vertex
-        totalEnergy += meanCurvatureContribution + gaussCurvatureContribution + stretchingEnergyContribution + lengthEnergyContribution;
+        totalEnergy += meanCurvatureContribution + gaussCurvatureContribution + stretchingEnergyContribution;
     }
     
-
+    double lengthEnergyContribution = (lengthEnergy) ? 0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist,m_parameters.radius),2) : 0;
+    totalEnergy += lengthEnergyContribution;
     // End of loop over the previous curve vertices
     m_firstRun = false;
 
@@ -243,7 +267,7 @@ double EnergyFunction::evalEnergy(RadialSurface& extendedSurface)
         int index = extendedSurface.curveStartIndex(curveCount-2) + i;
         extendedSurface.curvatures(index, currentGauss, currentMean);
         totalGauss += currentGauss;
-        totalMean += m_parameters.stiffnessRatio / 2 * std::pow(currentMean - m_parameters.desiredCurvature,2);
+        totalMean += m_parameters.meanStiffness / 2 * std::pow(currentMean - m_parameters.desiredCurvature,2);
     }
     return totalMean + totalGauss;
 };
@@ -357,6 +381,16 @@ double EnergyFunction::lengthFunction(double t, double t0){
     return 2 * M_PI * ( 1/sqrtDC * std::sinh(sqrtDC * (t-t0)) + t0);
 };
 
-double EnergyFunction::rescaleEnergyFunction(double t, double t0){
-    return 1/(std::pow(m_parameters.resolution,2) * lengthFunction(t,t0));
+double EnergyFunction::rescaleEnergyFunction(double t, double t0, int nextCurveLength){
+    //return 1/(std::pow(nextCurveLength,2) * lengthFunction(t,t0));
+    double multiplier = m_parameters.lengthStiffness;
+    if (m_parameters.lengthStiffness < 1) {
+        multiplier = 1/m_parameters.lengthStiffness;
+    }
+    if (m_parameters.meanStiffness < 1) {
+        multiplier *= 1/m_parameters.meanStiffness;
+    } else {
+        multiplier *= m_parameters.meanStiffness;
+    }
+    return 1/(lengthFunction(t,t0));
 };

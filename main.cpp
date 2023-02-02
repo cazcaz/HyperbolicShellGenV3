@@ -9,28 +9,28 @@ int main(int, char**) {
 
     // std::vector<ShellParams> parameterList;
     // BatchGen massCalcer;
-    // double stiffChange = (10000-1)/10;
-    // double curveChange = (0.0001 - 0.000001)/10;
-    // double stiffness = 1;
+    // double meanStiffChange = (0.01 - 0.0001)/10;
+    // double gaussStiffChange = (0.01 - 0.0001)/10;
 
     // ShellParams parameters;
     // parameters.centreX = 0;
     // parameters.centreY = 0;
     // parameters.centreZ = 0;
-    // parameters.desiredCurvature = 0.000001;
-    // parameters.expansions = 15;
-    // parameters.resolution = 100;
+    // parameters.desiredCurvature = -0.01;
+    // parameters.expansions = 1000;
+    // parameters.resolution = 30;
     // parameters.extensionLength = 0.1;
-    // parameters.stiffnessRatio = 100;
+    // parameters.meanStiffness = 0.0001;
+    // parameters.gaussStiffness = 0.0001;
 
 
     // for (int j=0; j < 10; j++){
     //     for (int k=0; k < 10; k++){
     //         parameterList.push_back(parameters);
-    //         parameters.desiredCurvature += curveChange;
+    //         parameters.gaussStiffness += gaussStiffChange;
     //     }
-    //     parameters.desiredCurvature = 0.000001;
-    // parameters.stiffnessRatio += stiffChange;
+    //     parameters.gaussStiffness = 0.0001;
+    // parameters.meanStiffness += meanStiffChange;
     // }
 
     // //Push parameters to the parameterList
@@ -38,8 +38,8 @@ int main(int, char**) {
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 50;
-    parameters.desiredCurvature = -0.001;
+    parameters.expansions = 100;
+    parameters.desiredCurvature = -0.01;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();
     shellGenerator.expandCurveNTimes();
