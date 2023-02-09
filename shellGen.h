@@ -29,5 +29,6 @@ class ShellGen {
     private:
         struct ShellParams& m_parameters;
         RadialSurface m_surface;
-        double initLength;
+        double m_initLength;
+        double m_radialDist;
 };
