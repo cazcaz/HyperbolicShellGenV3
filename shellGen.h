@@ -31,4 +31,5 @@ class ShellGen {
         RadialSurface m_surface;
         double m_initLength;
         double m_radialDist;
+        std::string m_outputDirectory = "";
 };

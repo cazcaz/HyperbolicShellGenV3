@@ -1,6 +1,6 @@
 #include "radialSurface.h"
 
-RadialSurface::RadialSurface() : m_curveCount(0)
+RadialSurface::RadialSurface() : m_curveCount(0) , m_iterCount(0)
 {
 }
 
@@ -77,6 +77,21 @@ void RadialSurface::changeCurvePoint(int curve, int index, Vector3d &newPoint)
 int RadialSurface::getCurveCount()
 {
     return m_curveCount;
+}
+
+int RadialSurface::getIterCount()
+{
+    return m_iterCount;
+}
+
+void RadialSurface::increaseIterCount()
+{
+    m_iterCount+=1;
+}
+
+void RadialSurface::addIterCount(int count)
+{
+    m_iterCount += count;
 }
 
 int RadialSurface::curveStartIndex(int curveNum)

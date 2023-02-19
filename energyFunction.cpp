@@ -10,14 +10,16 @@ EnergyFunction::EnergyFunction(RadialSurface& surface,
                                std::vector<Vector3d>& normals,
                                std::vector<Vector3d>& binormals,
                                ShellParams& parameters,
-                               double radialDist) :
+                               double radialDist,
+                               std::string outputDirectory) :
                                m_surface(surface) , 
                                m_prevCurve(extendedPrevCurve) ,
                                m_normals(normals) ,
                                m_binormals(binormals) ,
                                m_parameters(parameters) ,
                                m_radialDist(radialDist),
-                               m_firstRun(true) {
+                               m_firstRun(true),
+                               m_outDirectory(outputDirectory) {
 };
 
 EnergyFunction::~EnergyFunction() = default;
@@ -33,13 +35,22 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     //
     // H: Mean curvature, K: Gauss curvature, B: Bending stiffness, C: Stretch Resistance, A: Current triangle area, A0: Original vertex area
 
+    if (m_surface.getCurveCount() > 2) {
+        std::string fileName = std::to_string(m_surface.getIterCount());
+        std::string outfileName = m_outDirectory+"/" + fileName + ".txt";
+        std::ofstream outfile(outfileName);
+        outfile << m_surface;
+        outfile.close();
+    }
+    m_surface.increaseIterCount();
+
     //Use these booleans to quickly enable and disable wanted energy contributions
     bool meanCurvatureEnergy = false;
     bool gaussCurvatureEnergy = false;
     bool lengthEnergy = true;
     bool areaEnergy = false;
-    bool bendEnergy = true;
-    bool intersectionPenalty = true;
+    bool bendEnergy = false;
+    bool intersectionPenalty = false;
 
     std::vector<Vector3d> nextCurve;
     int curveCount = m_surface.getCurveCount();
@@ -118,55 +129,37 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                 std::vector<double> currentIndexAreas;
                 int realIndex;
                 int realSecondIndex;
-                for (int outerCurveSecondIndex = 0; outerCurveSecondIndex < nextCurveLength - 3; outerCurveSecondIndex++) {
+                for (int outerCurveSecondIndex = 0; outerCurveSecondIndex < nextCurveLength; outerCurveSecondIndex++) {
                     
-                    if (outerCurveSecondIndex > outerCurveIndex-2) {
-                        realIndex = outerCurveSecondIndex + 2;
+                    edgeStart = nextCurve[outerCurveSecondIndex];
+                    if (outerCurveSecondIndex == nextCurveLength - 1) {
+                        edgeEnd = nextCurve[0];
                     } else {
-                        realIndex = outerCurveSecondIndex;
+                        edgeEnd = nextCurve[outerCurveSecondIndex + 1];
                     }
-                    realSecondIndex = realIndex + 1;
-                    if (realIndex > nextCurveLength - 1) {
-                        realIndex -= nextCurveLength;
-                    }
-                    if (realSecondIndex > nextCurveLength - 1) {
-                        realSecondIndex -= nextCurveLength;
-                    }
+                    bool validArea = !(outerCurveSecondIndex == outerCurveIndex - 1 || outerCurveSecondIndex == outerCurveIndex || (outerCurveIndex == 0 && outerCurveSecondIndex == nextCurveLength - 1));
 
-                    edgeStart = nextCurve[realIndex];
-                    edgeEnd = nextCurve[realSecondIndex];
-
-                    triangleAngle = std::acos((edgeStart-currentVec).normalized().dot((edgeEnd-currentVec).normalized()));
-                    currentArea = 0.5 * (edgeStart-currentVec).norm() * (edgeEnd-currentVec).norm() * std::sin(triangleAngle);
+                    triangleAngle = (edgeStart-currentVec).normalized().dot((edgeEnd-currentVec).normalized());
+                    currentArea = (!validArea) ? 0 : 0.5 * (edgeStart-currentVec).norm() * (edgeEnd-currentVec).norm() * std::sqrt(1-std::pow(triangleAngle,2));
                     
-                    triangleAngleDeriv = angleDeriv(triangleAngle, edgeStart, currentVec, edgeEnd, zeroVec, currentDeriv, zeroVec);
+                    triangleAngleDeriv = (!validArea) ? 0 : angleDeriv(triangleAngle, edgeStart, currentVec, edgeEnd, zeroVec, currentDeriv, zeroVec);
                     double l1 = (edgeStart-currentVec).norm();
                     double l2 = (edgeEnd-currentVec).norm();
                     double dl1 = normDiffDeriv(edgeStart,currentVec,zeroVec,currentDeriv);
                     double dl2 = normDiffDeriv(edgeEnd,currentVec,zeroVec,currentDeriv);
-                    currentAreaDeriv = 0.5 * (l1 * l2 * triangleAngleDeriv * std::cos(triangleAngle) + (l1*dl2 + l2*dl1)*std::sin(triangleAngle));
+                    currentAreaDeriv = (!validArea) ? 0 : 0.5 * (l1 * l2 * triangleAngleDeriv * triangleAngle + (l1*dl2 + l2*dl1)*std::sqrt(1-std::pow(triangleAngle,2)));
                     
 
                     double C1 = 10e6, C2 = 100;
                     double intersectionEnergy, origArea, ratio;
                     if (m_firstRun) {
-                        if (currentArea == 0) {
-                        std::cout << "PO" << std::endl;
-                        }
                         currentIndexAreas.push_back(currentArea);
-                        intersectionEnergy = C1 * std::exp(-C2);
-                        intersectionPenaltyDerivs[outerCurveIndex] += -C1*C2*currentAreaDeriv * totalIntersectionEnergy;
-                        if (std::isnan(intersectionEnergy)) {
-                            std::cout << "OOP" << std::endl;
-                        }
+                        intersectionEnergy = (!validArea) ? 0 : C1 * std::exp(-C2);
+                        intersectionPenaltyDerivs[outerCurveIndex] += (!validArea) ? 0 : -C2*(currentAreaDeriv/currentArea) *totalIntersectionEnergy;
                     } else {
                         origArea = m_origTrianglePenaltySizes[outerCurveIndex][outerCurveSecondIndex];
-                        intersectionEnergy = C1 * std::exp(-C2 * currentArea / origArea);
-                        
-                        if (std::isnan(intersectionEnergy)) {
-                            std::cout << "OOP" << std::endl;
-                        }
-                        intersectionPenaltyDerivs[outerCurveIndex] += -C1*C2*(currentArea / origArea)*currentAreaDeriv * totalIntersectionEnergy;
+                        intersectionEnergy = (!validArea) ? 0 : C1 * std::exp(-C2 * currentArea / origArea);
+                        intersectionPenaltyDerivs[outerCurveIndex] += (!validArea) ? 0 : -C2*(currentAreaDeriv / origArea) * totalIntersectionEnergy;
                     }
                     totalIntersectionEnergy += intersectionEnergy;
                 }
@@ -227,13 +220,13 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                     triangleEdge2 = nextSurface.getPos(triangle1.vertex3) - currentPoint;
                     edge1Length = (triangleEdge1).norm();
                     edge2Length = (triangleEdge2).norm();
-                    vertexAngle = std::acos(triangleEdge1.normalized().dot(triangleEdge2.normalized()));
+                    vertexAngle = triangleEdge1.normalized().dot(triangleEdge2.normalized());
                     triangleEdge3 = nextSurface.getPos(triangle2.vertex2) - currentPoint;
                     triangleEdge4 = nextSurface.getPos(triangle2.vertex3) - currentPoint;
                     norm1 = crossProd(triangleEdge1, triangleEdge2).normalized();
                     norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
-                    area += 0.125 * edge1Length * edge2Length * std::sin(vertexAngle);
-                    angleSum += vertexAngle; 
+                    area += 0.125 * edge1Length * edge2Length * std::sqrt(1-std::pow(vertexAngle,2));
+                    angleSum += std::acos(vertexAngle); 
                     curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
                 }
             }
@@ -314,15 +307,6 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                     dihedralAngleDeriv(leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dihedralAngle, dihedralDeriv);
                     
                     double dGauss = (focusedIndex) ? -(dt1+dt2)/area - dA * (gaussCurvature)/std::pow(area,2) : 0;
-                    // if (derivativeIndex == 10) {
-                        
-                    //     if (focusedIndex) {
-                    //         std::cout << "Curve Index" << curveLoc << " " <<  dGauss << std::endl;
-                    //         std::cout << "Triangle Contributer" << std::endl;
-                    //         std::cout << triangle1.vertex1 << " " << triangle1.vertex2 <<" " << triangle1.vertex3 << std::endl;
-                    //         std::cout << triangle2.vertex1 <<" " << triangle2.vertex2 <<" " << triangle2.vertex3 << std::endl;
-                    //     }
-                    // } 
                     double dMean = (focusedIndex) ? 0.25 * (dl2 * dihedralAngle + edge2Length * dihedralDeriv)/area - dA*meanCurvature/area : 0.25 * edge2Length * dihedralDeriv/area;
                     double dStretch = (focusedIndex) ? m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA : 0;
                     
@@ -471,8 +455,8 @@ double EnergyFunction::triangleAreaDeriv(double angle1, double angle2, double da
     dl1 = normDiffDeriv(a,d,da,dd);
     dl2 = normDiffDeriv(b,d,db,dd);
     dl3 = normDiffDeriv(c,d,dc,dd);
-    double part1 = 0.125 * (l1 * l2 * dangle1 * std::cos(angle1) + (l1*dl2 + l2*dl1)*std::sin(angle1));
-    double part2 = 0.125 * (l2 * l3 * dangle2 * std::cos(angle2) + (l2*dl3 + l3*dl2)*std::sin(angle2));
+    double part1 = 0.125 * (l1 * l2 * dangle1 * angle1 + (l1*dl2 + l2*dl1)*std::sqrt(1-std::pow(angle1,2)));
+    double part2 = 0.125 * (l2 * l3 * dangle2 * angle2 + (l2*dl3 + l3*dl2)*std::sqrt(1-std::pow(angle2,2)));
     return part1 + part2;
 }
 

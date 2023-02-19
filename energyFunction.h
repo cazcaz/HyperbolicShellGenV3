@@ -4,13 +4,15 @@
 #include <vector>
 #include "shellParams.h"
 #include "radialSurface.h"
+#include <ostream>
+#include <fstream>
 
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
 class EnergyFunction {
     public:
-        EnergyFunction(RadialSurface& surface, std::vector<Vector3d>& extendedPrevCurve, std::vector<Vector3d>& normals, std::vector<Vector3d>& binormals, ShellParams& parameters, double radialDist);
+        EnergyFunction(RadialSurface& surface, std::vector<Vector3d>& extendedPrevCurve, std::vector<Vector3d>& normals, std::vector<Vector3d>& binormals, ShellParams& parameters, double radialDist, std::string outputDirectory);
         ~EnergyFunction();
 
         double operator()(const VectorXd& inputs, VectorXd& derivatives);
@@ -40,4 +42,5 @@ class EnergyFunction {
         bool m_firstRun;
         std::vector<double> m_origTriangleSizes;
         std::vector<std::vector<double>> m_origTrianglePenaltySizes;
+        std::string m_outDirectory;
 };

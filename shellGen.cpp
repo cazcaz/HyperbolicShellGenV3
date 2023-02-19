@@ -3,12 +3,20 @@
 #include <cmath>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include "LBFGS.h"
 #include "energyFunction.h"
 
 using Eigen::Vector3d;
+namespace fs = std::filesystem;
 
-ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius) {};
+ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius){
+    ShellName namer;
+    std::string fileName = namer.makeName(m_parameters);
+    m_outputDirectory ="./OutputSurfaceTxts/" + fileName;
+    fs::create_directory(m_outputDirectory);
+    fs::create_directory("./OutputSurfaceMeshes/" + fileName);
+};
 ShellGen::~ShellGen() {};
 
 void ShellGen::setInitCurve() {
@@ -73,14 +81,17 @@ bool ShellGen::expandCurve() {
         Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
         extendedPrevCurve.push_back(nextPoint);
     }
-    EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, m_radialDist + m_parameters.extensionLength);
+    EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input = 0.05 * VectorXd::Random(nextRingSize);
+    VectorXd input =  0 * VectorXd::Random(nextRingSize);
+    for (int ignore; ignore < nextRingSize; ignore++) {
+        input[ignore] += 0.5;
+    }
 
-    // Used to make a linear approx. of the derivative for testing
+    // // Used to make a linear approx. of the derivative for testing
     // VectorXd inputChanged = input;
     // double h = 0.00000001;
     // inputChanged[10] += h;
@@ -93,20 +104,21 @@ bool ShellGen::expandCurve() {
     // std::cout << derivatives.transpose() << std::endl;
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
+        m_surface.addIterCount(iterCount);
         if (iterCount == 100) {
             m_parameters.extensionLength *= 0.5;
-            //std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
             //success = false;
         }
     } catch(...) {
-        //std::cout << "Failed from error in calculation." << std::endl;
+        std::cout << "Failed from error in calculation." << std::endl;
         return false;
     }
 
     std::vector<Vector3d> nextCurve;
     for (int i =0; i<nextRingSize;i++) {
         if (std::isnan(input[i])){
-            //std::cout << "Failed from nan input." << std::endl;
+            std::cout << "Failed from nan input." << std::endl;
             return false;
         }
         nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + m_parameters.extensionLength * input[i] * binormals[i]);
@@ -127,7 +139,6 @@ void ShellGen::expandCurveNTimes() {
         return;
     } else {
         for (int iteration = 0; iteration < m_parameters.expansions; iteration++){
-            // std::cout << iteration << std::endl;
             // if (iteration % 10) {
             //     printSurface();
             // }
@@ -158,9 +169,7 @@ void ShellGen::printSurface() {
         //not enough information to make a surface
         return; 
     }
-    std::string path = "/../OutputSurfaceTxts/";
-    std::ofstream open(path);
-    std::ofstream surfaceFile("../OutputSurfaceTxts/" + fileName + ".txt");
+    std::ofstream surfaceFile(m_outputDirectory +"/"+ fileName + ".txt");
     surfaceFile << m_surface;
     surfaceFile.close();
 }
