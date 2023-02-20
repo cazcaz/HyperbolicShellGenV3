@@ -5,6 +5,7 @@
 
 using Eigen::Vector3d;
 int main(int, char**) {
+    system("sudo ./cleanup.sh");
     
     // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
 
@@ -19,26 +20,20 @@ int main(int, char**) {
     parameters.centreY = 0;
     parameters.centreZ = 0;
     parameters.desiredCurvature = -1;
-    parameters.expansions = 4;
+    parameters.expansions = 30;
     parameters.resolution = 100;
     parameters.extensionLength = 0.1;
-    // parameters.meanStiffness = 0.0001;
-    // parameters.gaussStiffness = 0.0001;
-    parameters.bendingStiffness = 0.001;
+    parameters.bendingStiffness = 0.1;
 
 
-    // for (int j=0; j < 10; j++){
-    //     for (int k=0; k < 10; k++){
-    //         parameterList.push_back(parameters);
-    //         parameters.gaussStiffness += gaussStiffChange;
-    //     }
-    //     parameters.gaussStiffness = 0.0001;
-    // parameters.meanStiffness += meanStiffChange;
-    // }
+        // for (int k=0; k < 20; k++){
+        //     parameterList.push_back(parameters);
+        //     parameters.bendingStiffness += bendStiffChange;
+        // }
 
-    for (int j=0; j < 3; j++){
+    for (int j=0; j < 10; j++){
         parameterList.push_back(parameters);
-        parameters.bendingStiffness += bendStiffChange;
+        parameters.period+=1;
     }
 
     //Push parameters to the parameterList
@@ -46,13 +41,15 @@ int main(int, char**) {
     massCalcer.calculateAll(parameterList);
 
     // ShellParams parameters;
-    // parameters.expansions = 3;
+    // parameters.expansions = 10;
     // parameters.desiredCurvature = -1;
     // ShellGen shellGenerator(parameters);
     // shellGenerator.setInitCurve();
     // shellGenerator.expandCurveNTimes();
     // shellGenerator.printSurface();
 
+
+    std::cout << "Surface generation complete, converting to .stl" << std::endl;
     system("sudo python3 txtToStl.py");
     return 0;
 }

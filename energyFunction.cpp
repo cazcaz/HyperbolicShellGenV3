@@ -34,13 +34,14 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     // Summed over all vertices of the previous ring
     //
     // H: Mean curvature, K: Gauss curvature, B: Bending stiffness, C: Stretch Resistance, A: Current triangle area, A0: Original vertex area
-
-    if (m_surface.getCurveCount() > 2) {
-        std::string fileName = std::to_string(m_surface.getIterCount());
-        std::string outfileName = m_outDirectory+"/" + fileName + ".txt";
-        std::ofstream outfile(outfileName);
-        outfile << m_surface;
-        outfile.close();
+    if (m_parameters.saveEveryFrame) {
+        if (m_surface.getCurveCount() > 2) {
+            std::string fileName = std::to_string(m_surface.getIterCount());
+            std::string outfileName = m_outDirectory+"/" + fileName + ".txt";
+            std::ofstream outfile(outfileName);
+            outfile << m_surface;
+            outfile.close();
+        }
     }
     m_surface.increaseIterCount();
 
@@ -49,7 +50,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     bool gaussCurvatureEnergy = false;
     bool lengthEnergy = true;
     bool areaEnergy = false;
-    bool bendEnergy = false;
+    bool bendEnergy = true;
     bool intersectionPenalty = false;
 
     std::vector<Vector3d> nextCurve;
@@ -327,8 +328,12 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
             totalEnergy += meanCurvatureContribution + gaussCurvatureContribution + stretchingEnergyContribution;
         }
     }
-    derivatives += lengthDerivs;
-    derivatives += intersectionPenaltyDerivs;
+    if (lengthEnergy) {
+        derivatives += lengthDerivs;
+    }
+    if (intersectionPenalty) {
+        derivatives += intersectionPenaltyDerivs;
+    }
     double lengthEnergyContribution = (lengthEnergy) ? 0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist,m_parameters.radius),2) : 0;
     double bendingEnergyContribution = (bendEnergy) ? totalBendingEnergy : 0;
     totalEnergy += lengthEnergyContribution;

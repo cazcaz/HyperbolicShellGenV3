@@ -45,7 +45,7 @@ bool ShellGen::expandCurve() {
     double lon = lengthFunction(m_radialDist, initialDist);
     int nextRingSize = int(lengthFunction(m_radialDist + m_parameters.extensionLength, initialDist) * m_parameters.resolution / (2 * M_PI * initialDist));
     if (curveCount == 1) {
-        for (Vector3d firstCurvePoint : m_surface.getCurve(0)){
+        for (Vector3d firstCurvePoint : m_surface.getCurve(1)){
             normals.push_back(firstCurvePoint.normalized());
         }
     } else {
@@ -60,8 +60,16 @@ bool ShellGen::expandCurve() {
     //Nicely behaved tangents
     double angleChange = 2 * M_PI / nextRingSize;
     for (int i =0; i<nextRingSize;i++){
-            //Vector3d nextTangent(-std::sin(angleChange * i), std::cos(angleChange * i), 0);  
-            Vector3d nextTangent = m_surface.getPoint(curveCount-1, angleChange * i+0.0001) - m_surface.getPoint(curveCount-1, angleChange * i -0.0001);
+            //Vector3d nextTangent(-std::sin(angleChange * i), std::cos(angleChange * i), 0);
+            double ballEdge1 = angleChange * i+0.000001;
+            double ballEdge2 = angleChange * i-0.000001;
+            if (ballEdge1 > 2*M_PI){
+                ballEdge1 -= 2*M_PI;
+            }
+            if (ballEdge2 > 2*M_PI){
+                ballEdge2 -= 2*M_PI;
+            }
+            Vector3d nextTangent = m_surface.getPoint(curveCount-1, ballEdge1) - m_surface.getPoint(curveCount-1, ballEdge2);
             nextTangent.normalize();
             Vector3d nextBinormal(normals[i][1]*nextTangent[2] - normals[i][2]*nextTangent[1] ,normals[i][2]*nextTangent[0] - normals[i][0]*nextTangent[2], normals[i][0]*nextTangent[1] - normals[i][1]*nextTangent[0]);
             nextBinormal.normalize();
@@ -81,14 +89,15 @@ bool ShellGen::expandCurve() {
         Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
         extendedPrevCurve.push_back(nextPoint);
     }
+
     EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 100;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
     VectorXd input =  0 * VectorXd::Random(nextRingSize);
-    for (int ignore; ignore < nextRingSize; ignore++) {
-        input[ignore] += 0.5;
+    for (int ignore = 0; ignore < nextRingSize; ignore++) {
+        input[ignore] += 0.01 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     }
 
     // // Used to make a linear approx. of the derivative for testing

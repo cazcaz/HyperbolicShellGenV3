@@ -43,7 +43,7 @@ void RadialSurface::addCurve(std::vector<Vector3d> newCurve)
 
 Vector3d RadialSurface::getPoint(int curve, double s)
 {
-    double pointLocation =  s*m_curveLengths[curve]/(2 * M_PI);
+    double pointLocation =  s*double(m_curveLengths[curve])/(2 * M_PI);
     //s is the radial parameter in [0, 2 * pi)
     int prevIndex = int(pointLocation);
     double lineRatio = pointLocation - prevIndex;
