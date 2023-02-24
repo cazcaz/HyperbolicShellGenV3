@@ -14,8 +14,11 @@ ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initL
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
     m_outputDirectory ="./OutputSurfaceTxts/" + fileName;
+    m_curvatureDirectory = "./CurvatureTxts/" + fileName;
     fs::create_directory(m_outputDirectory);
     fs::create_directory("./OutputSurfaceMeshes/" + fileName);
+    fs::create_directory(m_curvatureDirectory);
+    fs::create_directory("./CurvatureOutputPngs/" + fileName);
 };
 ShellGen::~ShellGen() {};
 
@@ -97,10 +100,10 @@ bool ShellGen::expandCurve() {
     double energy;
     VectorXd input =  0 * VectorXd::Random(nextRingSize);
     for (int ignore = 0; ignore < nextRingSize; ignore++) {
-        input[ignore] += 0.01 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
+        input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     }
 
-    // // Used to make a linear approx. of the derivative for testing
+    // Used to make a linear approx. of the derivative for testing
     // VectorXd inputChanged = input;
     // double h = 0.00000001;
     // inputChanged[10] += h;
@@ -170,6 +173,7 @@ int ShellGen::correctIndex(int index){
 };
 
 void ShellGen::printSurface() {
+
     
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
@@ -181,6 +185,19 @@ void ShellGen::printSurface() {
     std::ofstream surfaceFile(m_outputDirectory +"/"+ fileName + ".txt");
     surfaceFile << m_surface;
     surfaceFile.close();
+    //Calculate curvatures of every point to output to m_curvatureDirectory
+    std::ofstream curvatureFile(m_curvatureDirectory +"/"+ fileName + ".txt");
+    int totalVertices = m_surface.surfaceSize();
+    double currentMeanCurv;
+    double currentGaussCurv;
+    for (int i =  m_surface.curveStartIndex(1); i < totalVertices - m_surface.curveStartIndex(m_surface.getCurveCount()-1); i++){
+        m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
+        curvatureFile << currentGaussCurv << " " << currentMeanCurv;
+        if (i != totalVertices - m_surface.curveStartIndex(m_surface.getCurveCount()-1)-1){
+        curvatureFile << ":";
+        }
+    }
+    curvatureFile.close();
 }
 
 double ShellGen::lengthFunction(double t, double t0){

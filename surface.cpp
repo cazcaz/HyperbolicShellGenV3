@@ -16,6 +16,11 @@ void Surface::addPoint(Vector3d& newPoint)
     return;
 }
 
+int Surface::surfaceSize()
+{
+    return m_pointCount;
+}
+
 void Surface::addTriangle(Triangle triangle)
 {
     m_faces[triangle.vertex1].push_back(triangle);
@@ -51,48 +56,56 @@ void Surface::curvatures(int index, double& gaussCurvature, double& meanCurvatur
     // End
 
     auto key_selector = [](auto pair){return pair.first;};
-    double curvatureSum = 0;
-    std::vector<int> completedEdges;
-    Vector3d currentPoint = getPos(index);
-    std::unordered_map<int, std::vector<Triangle>> pairTriangles;
-    for (Triangle triangle : m_faces[index]) {
-        if (triangle.vertex1 == index) {
-            pairTriangles[triangle.vertex2].push_back(triangle);
-            pairTriangles[triangle.vertex3].push_back(triangle);
-        } else if (triangle.vertex2 == index) {
-            pairTriangles[triangle.vertex1].push_back(triangle);
-            pairTriangles[triangle.vertex3].push_back(triangle);
-        } else {
-            pairTriangles[triangle.vertex1].push_back(triangle);
-            pairTriangles[triangle.vertex2].push_back(triangle);
-        }
-    }
-    std::vector<int> keys(pairTriangles.size());
-    transform(pairTriangles.begin(), pairTriangles.end(), keys.begin(), key_selector);
-    double area = 0;
-    double angleSum = 0;
-    for (int trianglePairIndex : keys) {
-        Triangle triangle1 = pairTriangles[trianglePairIndex][0];
-        Triangle triangle2 = pairTriangles[trianglePairIndex][1];
-        if (triangle1.vertex2 == triangle2.vertex3) {
-            triangle1 = triangle2;
-            triangle2 = pairTriangles[trianglePairIndex][0];
-        }
-        edge = getPos(trianglePairIndex) - currentPoint;
-        length = edge.norm();
-        triangleEdge1 = getPos(triangle1.vertex2) - currentPoint;
-        triangleEdge2 = getPos(triangle1.vertex3) - currentPoint;
-        edge1Length = (triangleEdge1).norm();
-        edge2Length = (triangleEdge2).norm();
-        vertexAngle = std::acos(triangleEdge1.normalized().dot(triangleEdge2.normalized()));
-        triangleEdge3 = getPos(triangle2.vertex2) - currentPoint;
-        triangleEdge4 = getPos(triangle2.vertex3) - currentPoint;
-        norm1 = crossProd(triangleEdge1, triangleEdge2).normalized();
-        norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
-        area += 0.125 * edge1Length * edge2Length * std::sin(vertexAngle);
-        angleSum += vertexAngle; 
-        curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
-    }
+            double curvatureSum = 0;
+            std::vector<int> completedEdges;
+            Vector3d currentPoint = getPos(index);
+            std::unordered_map<int, std::vector<Triangle>> pairTriangles;
+            for (Triangle triangle : getNeighbourTriangles(index)) {
+                if (triangle.vertex1 == index) {
+                    pairTriangles[triangle.vertex2].push_back(triangle);
+                    pairTriangles[triangle.vertex3].push_back(triangle);
+                } else if (triangle.vertex2 == index) {
+                    pairTriangles[triangle.vertex1].push_back(triangle);
+                    pairTriangles[triangle.vertex3].push_back(triangle);
+                } else {
+                    pairTriangles[triangle.vertex1].push_back(triangle);
+                    pairTriangles[triangle.vertex2].push_back(triangle);
+                }
+            }
+            std::vector<int> keys(pairTriangles.size());
+            transform(pairTriangles.begin(), pairTriangles.end(), keys.begin(), key_selector);
+
+            // End of pair finding code
+
+            double area = 0;
+            double angleSum = 0;
+            
+            // Goes through pairs of edges adjacent to eachother and calculates curvatures and areas of the triangles formed
+
+            for (int trianglePairIndex : keys) {
+                if (pairTriangles[trianglePairIndex].size() == 2) {
+                    Triangle triangle1 = pairTriangles[trianglePairIndex][0];
+                    Triangle triangle2 = pairTriangles[trianglePairIndex][1];
+                    if (triangle1.vertex2 == triangle2.vertex3) {
+                        triangle1 = triangle2;
+                        triangle2 = pairTriangles[trianglePairIndex][0];
+                    }
+                    edge = getPos(trianglePairIndex) - currentPoint;
+                    length = edge.norm();
+                    triangleEdge1 = getPos(triangle1.vertex2) - currentPoint;
+                    triangleEdge2 = getPos(triangle1.vertex3) - currentPoint;
+                    edge1Length = (triangleEdge1).norm();
+                    edge2Length = (triangleEdge2).norm();
+                    vertexAngle = triangleEdge1.normalized().dot(triangleEdge2.normalized());
+                    triangleEdge3 = getPos(triangle2.vertex2) - currentPoint;
+                    triangleEdge4 = getPos(triangle2.vertex3) - currentPoint;
+                    norm1 = crossProd(triangleEdge1, triangleEdge2).normalized();
+                    norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
+                    area += 0.125 * edge1Length * edge2Length * std::sqrt(1-std::pow(vertexAngle,2));
+                    angleSum += std::acos(vertexAngle); 
+                    curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
+                }
+            }
     meanCurvature = (0.25 * curvatureSum)/area;
     gaussCurvature = (2 * M_PI - angleSum)/area;
     return;

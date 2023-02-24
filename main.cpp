@@ -41,7 +41,7 @@ int main(int, char**) {
     massCalcer.calculateAll(parameterList);
 
     // ShellParams parameters;
-    // parameters.expansions = 10;
+    // parameters.expansions = 20;
     // parameters.desiredCurvature = -1;
     // ShellGen shellGenerator(parameters);
     // shellGenerator.setInitCurve();
@@ -51,5 +51,7 @@ int main(int, char**) {
 
     std::cout << "Surface generation complete, converting to .stl" << std::endl;
     system("sudo python3 txtToStl.py");
+    std::cout << "Generating curvature .png s" << std::endl;
+    system("sudo python3 curvTxtToPng.py");
     return 0;
 }

@@ -48,9 +48,9 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     //Use these booleans to quickly enable and disable wanted energy contributions
     bool meanCurvatureEnergy = false;
     bool gaussCurvatureEnergy = false;
-    bool lengthEnergy = true;
+    bool lengthEnergy = false;
     bool areaEnergy = false;
-    bool bendEnergy = true;
+    bool bendEnergy = false;
     bool intersectionPenalty = false;
 
     std::vector<Vector3d> nextCurve;
@@ -288,17 +288,27 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
 
                     // Gauss derivative calculation
                     
-                    Vector3d centrePoint = nextSurface.getPos(triangle1.vertex3);
-                    Vector3d leftNeighbour = nextSurface.getPos(triangle1.vertex2);
-                    Vector3d rightNeighbour = nextSurface.getPos(triangle2.vertex3);
-                    Vector3d dCentrePoint = (focusedIndex) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;
-                    Vector3d dLeftNeighbour = (!focusedIndex && leftFocus) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;
-                    Vector3d dRightNeighbour = (!focusedIndex && !leftFocus) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;
+                    Vector3d centrePoint = nextSurface.getPos(triangle1.vertex3);  // p2
+                    Vector3d leftNeighbour = nextSurface.getPos(triangle1.vertex2); // p1
+                    Vector3d rightNeighbour = nextSurface.getPos(triangle2.vertex3); // p3
+                    Vector3d dCentrePoint = (focusedIndex) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec; //dp2
+                    Vector3d dLeftNeighbour = (!focusedIndex && leftFocus) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;  //dp1
+                    Vector3d dRightNeighbour = (!focusedIndex && !leftFocus) ? m_parameters.extensionLength * m_binormals[derivativeIndex] : zeroVec;   //dp3
 
-                    double vertexAngle1 = triangleEdge1.normalized().dot(triangleEdge2.normalized());
-                    double vertexAngle2 = triangleEdge3.normalized().dot(triangleEdge4.normalized());
-                    double dt1 = angleDeriv(vertexAngle1, leftNeighbour, currentPoint, centrePoint, dLeftNeighbour, zeroVec, dCentrePoint);
-                    double dt2 = angleDeriv(vertexAngle2, centrePoint, currentPoint, rightNeighbour, dCentrePoint, zeroVec, dRightNeighbour);
+                    //        l2
+                    //     o------o
+                    //  l1/ p2      p3
+                    //   /
+                    //  o p1       I = (p3-p2)/|p3-p2| . (p1-p2)/|p1-p2|
+                    //             theta = acos(I)
+                    //             l1 = |p1-p2|
+                    //             l2 = |p3-p2|
+
+                    double vertexAngle1 = triangleEdge1.normalized().dot(triangleEdge2.normalized()); // I1
+                    double vertexAngle2 = triangleEdge3.normalized().dot(triangleEdge4.normalized()); // I2
+                    //std::cout << "Angle1 " << vertexAngle1 << " Angle2 " << vertexAngle2 << std::endl;
+                    double dt1 = angleDeriv(vertexAngle1, leftNeighbour, currentPoint, centrePoint, dLeftNeighbour, zeroVec, dCentrePoint); // I1' * acos'(I1)
+                    double dt2 = angleDeriv(vertexAngle2, centrePoint, currentPoint, rightNeighbour, dCentrePoint, zeroVec, dRightNeighbour); // I2' * acos'(I2)
                     double dl1, dl2, dl3;
                     double dA = triangleAreaDeriv(vertexAngle1, vertexAngle2, dt1, dt2, leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dl1, dl2, dl3);
                 
@@ -307,7 +317,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                     double dihedralDeriv;
                     dihedralAngleDeriv(leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dihedralAngle, dihedralDeriv);
                     
-                    double dGauss = (focusedIndex) ? -(dt1+dt2)/area - dA * (gaussCurvature)/std::pow(area,2) : 0;
+                    double dGauss = (focusedIndex) ? -(dt1+dt2)/area - dA * (gaussCurvature)/area : 0;
                     double dMean = (focusedIndex) ? 0.25 * (dl2 * dihedralAngle + edge2Length * dihedralDeriv)/area - dA*meanCurvature/area : 0.25 * edge2Length * dihedralDeriv/area;
                     double dStretch = (focusedIndex) ? m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA : 0;
                     
@@ -397,7 +407,7 @@ Vector3d EnergyFunction::crossProd(Vector3d &a, Vector3d &b)
     return Vector3d(a[1]*b[2] - a[2]*b[1] ,a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]);
 }
 
-double EnergyFunction::angleDeriv(double angle, Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &da, Vector3d &db, Vector3d &dc)
+double EnergyFunction::angleDeriv(double insideAngle, Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &da, Vector3d &db, Vector3d &dc)
 {
     // Finds the derivative for the angle between the vectors (a-b) and (c-b)
     
@@ -406,7 +416,7 @@ double EnergyFunction::angleDeriv(double angle, Vector3d &a, Vector3d &b, Vector
     Vector3d normalisedVec1 = (a-b).normalized();
     Vector3d normalisedVec2 = (c-b).normalized();
     double insideAngleDeriv = dotDeriv(normalisedVec1, normalisedVec2, normalVecDeriv1, normalVecDeriv2);
-    return insideAngleDeriv * (-1/std::sqrt(1-std::pow(angle,2)));
+    return insideAngleDeriv * (-1/std::sqrt(1-std::pow(insideAngle,2)));
 }
 
 double EnergyFunction::dotDeriv(Vector3d &a, Vector3d &b, Vector3d &da, Vector3d &db)
@@ -450,7 +460,7 @@ void EnergyFunction::dihedralAngleDeriv(Vector3d &a, Vector3d &b, Vector3d &c, V
     derivResult = atan2Deriv(atan1, atan2, datan1, datan2);
 }
 
-double EnergyFunction::triangleAreaDeriv(double angle1, double angle2, double dangle1, double dangle2 ,Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &d, Vector3d &da, Vector3d &db, Vector3d &dc, Vector3d &dd, double& dl1, double& dl2, double& dl3)
+double EnergyFunction::triangleAreaDeriv(double insideAngle1, double insideAngle2, double dangle1, double dangle2 ,Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &d, Vector3d &da, Vector3d &db, Vector3d &dc, Vector3d &dd, double& dl1, double& dl2, double& dl3)
 {
     // Takes the point and derivatives of the only contributing terms to the area of a triangle face
     // CurrentPoint is d, others are a,b,c
@@ -460,8 +470,8 @@ double EnergyFunction::triangleAreaDeriv(double angle1, double angle2, double da
     dl1 = normDiffDeriv(a,d,da,dd);
     dl2 = normDiffDeriv(b,d,db,dd);
     dl3 = normDiffDeriv(c,d,dc,dd);
-    double part1 = 0.125 * (l1 * l2 * dangle1 * angle1 + (l1*dl2 + l2*dl1)*std::sqrt(1-std::pow(angle1,2)));
-    double part2 = 0.125 * (l2 * l3 * dangle2 * angle2 + (l2*dl3 + l3*dl2)*std::sqrt(1-std::pow(angle2,2)));
+    double part1 = 0.125 * (l1 * l2 * dangle1 * insideAngle1 + (l1*dl2 + l2*dl1)*std::sqrt(1-std::pow(insideAngle1,2)));
+    double part2 = 0.125 * (l2 * l3 * dangle2 * insideAngle2 + (l2*dl3 + l3*dl2)*std::sqrt(1-std::pow(insideAngle2,2)));
     return part1 + part2;
 }
 

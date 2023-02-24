@@ -28,6 +28,7 @@ class Surface {
         };
 
         void addPoint(Vector3d& newPoint);
+        int surfaceSize();
         void addTriangle(Triangle triangle);
         Vector3d getPos(int index);
         void changePos(int index, Vector3d& newPoint);
