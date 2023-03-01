@@ -37,7 +37,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     if (m_parameters.saveEveryFrame) {
         if (m_surface.getCurveCount() > 2) {
             std::string fileName = std::to_string(m_surface.getIterCount());
-            std::string outfileName = m_outDirectory+"/" + fileName + ".txt";
+            std::string outfileName = m_outDirectory+"/frame" + fileName + "surface.txt";
             std::ofstream outfile(outfileName);
             outfile << m_surface;
             outfile.close();
@@ -52,6 +52,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     bool areaEnergy = false;
     bool bendEnergy = false;
     bool intersectionPenalty = false;
+    bool springEnergy = true;
 
     std::vector<Vector3d> nextCurve;
     int curveCount = m_surface.getCurveCount();
@@ -68,17 +69,20 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     int nextCurveLength = nextSurface.getCurveLength(curveCount);
     double totalLength = 0;
     VectorXd lengthDerivs(nextCurveLength);
+    VectorXd springDerivs(nextCurveLength);
     VectorXd intersectionPenaltyDerivs = VectorXd::Zero(nextCurveLength);
     double totalEnergy = 0;
     double totalBendingEnergy = 0;
     double totalIntersectionEnergy = 0;
-    double rescaleTerm = rescaleEnergyFunction(m_radialDist, m_parameters.radius, nextCurveLength);
+    double totalSpringEnergy = 0;
+    double rescaleTerm = 1;//rescaleEnergyFunction(m_radialDist, m_parameters.radius, nextCurveLength);
     // Loop over every vertex of the new curve to find the length of the next curve
     // Also calculate the derivatives for the lengths and adds them
     Vector3d zeroVec(0,0,0);
-
+    double springNaturalLength = lengthFunction(m_radialDist,m_parameters.radius)/nextCurveLength;
+    double springEnergyContirbution = 0;
     //Save computation time if none are used
-    if (lengthEnergy || bendEnergy || intersectionPenalty){
+    if (lengthEnergy || bendEnergy || intersectionPenalty || springEnergy){
         for (int outerCurveIndex = 0; outerCurveIndex < nextCurveLength; outerCurveIndex++) {
             //Get the 3 vectors contributing to length and its derivatives, corrected for the boundaries of the curve
 
@@ -115,10 +119,11 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
 
             totalBendingEnergy += m_parameters.bendingStiffness * bendingEnergy(prevVec, currentVec, nextVec);
             derivatives[outerCurveIndex] += (bendEnergy) ? m_parameters.bendingStiffness * (bendingEnergyDeriv(currentVec,nextVec,next2Vec,currentDeriv,zeroVec,zeroVec) + bendingEnergyDeriv(prevVec,currentVec,nextVec,zeroVec,currentDeriv,zeroVec) + bendingEnergyDeriv(prev2Vec,prevVec,currentVec,zeroVec,zeroVec,currentDeriv)) : 0;
-            totalLength += (currentVec - prevVec).norm();
-            
+            double currentLength = (currentVec - prevVec).norm();
+            totalLength += currentLength;
+            springEnergyContirbution += 0.5 * m_parameters.strainCoeff * std::pow(currentLength - springNaturalLength,2);
             lengthDerivs[outerCurveIndex] = (lengthEnergy) ? normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) : 0;
-            
+            springDerivs[outerCurveIndex] = (springEnergy) ? m_parameters.strainCoeff * (normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) * (currentLength-springNaturalLength) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) * ((nextVec - currentVec).norm()-springNaturalLength)) : 0;
             // EXTREMELY EXPENSIVE 
             if (intersectionPenalty) {
                 // This section handles the energy that penalises the surface self-intersecting with itself
@@ -321,8 +326,8 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                     double dMean = (focusedIndex) ? 0.25 * (dl2 * dihedralAngle + edge2Length * dihedralDeriv)/area - dA*meanCurvature/area : 0.25 * edge2Length * dihedralDeriv/area;
                     double dStretch = (focusedIndex) ? m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA : 0;
                     
-                    double meanCurvatureDerivContribution = (meanCurvatureEnergy) ? m_parameters.meanStiffness * (meanCurvature) * dMean : 0;
-                    double gaussCurvatureDerivContribution = (gaussCurvatureEnergy) ? m_parameters.gaussStiffness * (gaussCurvature - m_parameters.desiredCurvature) * dGauss : 0;
+                    double meanCurvatureDerivContribution = (meanCurvatureEnergy) ? m_parameters.meanStiffness * (meanCurvature - m_parameters.desiredCurvature) * dMean : 0;
+                    double gaussCurvatureDerivContribution = (gaussCurvatureEnergy) ? - m_parameters.gaussStiffness * dGauss : 0;
                     double stretchDerivContribution =  (areaEnergy) ? m_parameters.strainCoeff * (dStretch) : 0;
 
                     // Finally add the contributions to the derivatives
@@ -330,8 +335,8 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
                     }
                 }
             }
-            double meanCurvatureContribution = (meanCurvatureEnergy) ? m_parameters.meanStiffness * 0.5 * std::pow(meanCurvature,2) : 0;
-            double gaussCurvatureContribution = (gaussCurvatureEnergy) ? m_parameters.gaussStiffness * std::pow(gaussCurvature - m_parameters.desiredCurvature,2) : 0;
+            double meanCurvatureContribution = (meanCurvatureEnergy) ? m_parameters.meanStiffness * 0.5 * std::pow(meanCurvature - m_parameters.desiredCurvature,2) : 0;
+            double gaussCurvatureContribution = (gaussCurvatureEnergy) ? - m_parameters.gaussStiffness * gaussCurvature : 0;
             double stretchingEnergyContribution = (areaEnergy) ? m_parameters.strainCoeff * 0.5 * std::pow(area - m_origTriangleSizes[curveLoc],2) : 0;
 
             // Add on the contribution to enery from each vertex
@@ -344,10 +349,15 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     if (intersectionPenalty) {
         derivatives += intersectionPenaltyDerivs;
     }
+    if (springEnergy) {
+        derivatives += springDerivs;
+        totalEnergy += springEnergyContirbution;
+    }
     double lengthEnergyContribution = (lengthEnergy) ? 0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist,m_parameters.radius),2) : 0;
     double bendingEnergyContribution = (bendEnergy) ? totalBendingEnergy : 0;
     totalEnergy += lengthEnergyContribution;
     totalEnergy += totalIntersectionEnergy;
+
     // End of loop over the previous curve vertices
     m_firstRun = false;
 

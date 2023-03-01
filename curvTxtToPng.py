@@ -3,29 +3,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 current = os.getcwd()
-searchPath = os.path.join(current, "CurvatureTxts")
+searchPath = os.path.join(current, "Surfaces")
 count = 0
 for folder in os.listdir(searchPath):
     fullInputPath = os.path.join(searchPath, folder)
     if os.path.isdir(fullInputPath):
-        fullOutputPath = os.path.join(current, "CurvatureOutputPngs", folder)
         fileNames = []
         #Each data will be two lists of the gaussian curvs and mean curvs
         datas = []
         for filename in os.listdir(fullInputPath):
-            if not filename.endswith('.txt'):
-                continue
-            fileNames.append(filename[:-4])
-            with open(os.path.join(fullInputPath, filename), 'r') as f:
-                data = [[],[]]
-                currentFile = f.readlines()
-                curvaturePairs = currentFile[0].split(":")
-                for pair in curvaturePairs:
-                    currentValues = pair.split(" ")
-                    data[0].append(float(currentValues[0]))
-                    data[1].append(float(currentValues[1]))
-                datas.append(data)
-        os.chdir(fullOutputPath)
+            if len(filename) >= 13:
+                if filename[-13:] == 'curvature.txt':
+                    fileNames.append(filename[:-4])
+                    with open(os.path.join(fullInputPath, filename), 'r') as f:
+                        data = [[],[]]
+                        currentFile = f.readlines()
+                        curvaturePairs = currentFile[0].split(":")
+                        for pair in curvaturePairs:
+                            currentValues = pair.split(" ")
+                            data[0].append(float(currentValues[0]))
+                            data[1].append(float(currentValues[1]))
+                        datas.append(data)
+        os.chdir(fullInputPath)
         for data, fileName in zip(datas, fileNames):
             dataset1 = np.array(data[0])
             mean1 = np.mean(dataset1)
@@ -52,7 +51,8 @@ for folder in os.listdir(searchPath):
             axs[1].text(0.95,0.90, 'IQRL:' + str(round(q1s2,4)), transform=axs[1].transAxes, ha='right', va='top')
             axs[1].text(0.95,0.85, 'IQRU:' + str(round(q2s2,4)), transform=axs[1].transAxes, ha='right', va='top')
 
-            fig.savefig(os.path.join(fullOutputPath, fileName + '.png'))
+            fig.savefig(os.path.join(fullInputPath, fileName + '.png'))
+            os.remove(fileName + '.txt')
             count+= 1
         os.chdir(current)
 

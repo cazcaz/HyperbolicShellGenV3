@@ -3,32 +3,30 @@ import os
 import numpy as np
 
 current = os.getcwd()
-searchPath = os.path.join(current, "OutputSurfaceTxts")
+searchPath = os.path.join(current, "Surfaces")
 count = 0
 for folder in os.listdir(searchPath):
     fullInputPath = os.path.join(searchPath, folder)
     if os.path.isdir(fullInputPath):
-        fullOutputPath = os.path.join(current, "OutputSurfaceMeshes", folder)
         surfaces = []
         fileNames = []
-
         for filename in os.listdir(fullInputPath):
-            if not filename.endswith('.txt'):
-                continue
-            fileNames.append(filename[:-4])
-            with open(os.path.join(fullInputPath, filename), 'r') as f:
-                currentSurface = []
-                currentFile = f.readlines()
-                curvesStrs = currentFile[0].split("|")
-                for curveString in curvesStrs:
-                    pointData = curveString.split(":")
-                    pointString = pointData[0].split(",")
-                    triangleStrings = pointData[1].split("~")
-                    point = [float(coord) for coord in pointString]
-                    neighbours = [[int(index) for index in indices.split(",")] for indices in triangleStrings]
-                    currentSurface.append([point, neighbours])
-                surfaces.append(currentSurface)
-        os.chdir(fullOutputPath)
+            if len(filename) >= 11:
+                if filename[-11:] == 'surface.txt':
+                    fileNames.append(filename[:-4])
+                    with open(os.path.join(fullInputPath, filename), 'r') as f:
+                        currentSurface = []
+                        currentFile = f.readlines()
+                        curvesStrs = currentFile[0].split("|")
+                        for curveString in curvesStrs:
+                            pointData = curveString.split(":")
+                            pointString = pointData[0].split(",")
+                            triangleStrings = pointData[1].split("~")
+                            point = [float(coord) for coord in pointString]
+                            neighbours = [[int(index) for index in indices.split(",")] for indices in triangleStrings]
+                            currentSurface.append([point, neighbours])
+                        surfaces.append(currentSurface)
+        os.chdir(fullInputPath)
         for surface, fileName in zip(surfaces, fileNames):
             listVertices = []
             listTriangles = []
@@ -51,6 +49,7 @@ for folder in os.listdir(searchPath):
                 for j in range(3):
                     surfaceMesh.vectors[i][j] = vertices[f[j],:]
             surfaceMesh.save(os.path.abspath(fileName + '.stl'))
+            os.remove(fileName + '.txt')
             count+= 1
         os.chdir(current)
 

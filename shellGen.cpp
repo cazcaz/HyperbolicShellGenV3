@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius){
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
-    m_outputDirectory ="./OutputSurfaceTxts/" + fileName;
+    m_outputDirectory ="./Surfaces/" + fileName;
     m_curvatureDirectory = "./CurvatureTxts/" + fileName;
     fs::create_directory(m_outputDirectory);
     fs::create_directory("./OutputSurfaceMeshes/" + fileName);
@@ -95,12 +95,12 @@ bool ShellGen::expandCurve() {
 
     EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 100;
+    param.max_iterations = 500;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
     VectorXd input =  0 * VectorXd::Random(nextRingSize);
     for (int ignore = 0; ignore < nextRingSize; ignore++) {
-        input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
+        input[ignore] += 0.5 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     }
 
     // Used to make a linear approx. of the derivative for testing
@@ -117,7 +117,7 @@ bool ShellGen::expandCurve() {
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
         m_surface.addIterCount(iterCount);
-        if (iterCount == 100) {
+        if (iterCount == 500) {
             m_parameters.extensionLength *= 0.5;
             std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
             //success = false;
@@ -182,22 +182,24 @@ void ShellGen::printSurface() {
         //not enough information to make a surface
         return; 
     }
-    std::ofstream surfaceFile(m_outputDirectory +"/"+ fileName + ".txt");
+    std::ofstream surfaceFile(m_outputDirectory +"/surface.txt");
     surfaceFile << m_surface;
     surfaceFile.close();
     //Calculate curvatures of every point to output to m_curvatureDirectory
-    std::ofstream curvatureFile(m_curvatureDirectory +"/"+ fileName + ".txt");
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame){
+    std::ofstream curvatureFile(m_outputDirectory +"/curvature.txt");
     int totalVertices = m_surface.surfaceSize();
     double currentMeanCurv;
     double currentGaussCurv;
-    for (int i =  m_surface.curveStartIndex(1); i < totalVertices - m_surface.curveStartIndex(m_surface.getCurveCount()-1); i++){
+    for (int i =  m_surface.curveStartIndex(1); i < m_surface.curveStartIndex(m_surface.getCurveCount()-1); i++){
         m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
         curvatureFile << currentGaussCurv << " " << currentMeanCurv;
-        if (i != totalVertices - m_surface.curveStartIndex(m_surface.getCurveCount()-1)-1){
+        if (i != m_surface.curveStartIndex(m_surface.getCurveCount()-1)-1){
         curvatureFile << ":";
         }
     }
     curvatureFile.close();
+    }
 }
 
 double ShellGen::lengthFunction(double t, double t0){
