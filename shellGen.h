@@ -32,5 +32,5 @@ class ShellGen {
         double m_initLength;
         double m_radialDist;
         std::string m_outputDirectory = "";
-        std::string m_curvatureDirectory = "";
+        std::vector<double> m_recordedExtensionLengths;
 };

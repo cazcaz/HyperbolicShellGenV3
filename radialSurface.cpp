@@ -113,7 +113,23 @@ int RadialSurface::correctIndex(int curve, int index)
     return index;
 }
 
-int RadialSurface::getCurveLength(int curveNum)
+int RadialSurface::getCurveSize(int curveNum)
 {
     return m_curveLengths[curveNum];
+}
+
+double RadialSurface::getCurveLength(int curveNum) {
+    std::vector<Vector3d> curve = getCurve(curveNum);
+    double length=0;
+    for (int index=0; index < curve.size(); index++) {
+        Vector3d point1 = curve[index];
+        Vector3d point2;
+        if (index == curve.size() - 1) {
+            point2 = curve[0];
+        } else {
+            point2 = curve[index + 1];
+        }
+        length += (point1 - point2).norm();
+    }
+    return length;
 }

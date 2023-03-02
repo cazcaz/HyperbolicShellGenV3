@@ -66,7 +66,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     // Pre-initialisations to avoid doing it every loop
     Vector3d edge, triangleEdge1, triangleEdge2, triangleEdge3, triangleEdge4, norm1, norm2, prev2Vec, prevVec, currentVec, nextVec, next2Vec;
     double length, edge1Length, edge2Length, edge3Length, vertexAngle;
-    int nextCurveLength = nextSurface.getCurveLength(curveCount);
+    int nextCurveLength = nextSurface.getCurveSize(curveCount);
     double totalLength = 0;
     VectorXd lengthDerivs(nextCurveLength);
     VectorXd springDerivs(nextCurveLength);
@@ -180,7 +180,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     }
 
     if (meanCurvatureEnergy || gaussCurvatureEnergy || areaEnergy) {
-        for (int curveLoc = 0; curveLoc < nextSurface.getCurveLength(curveCount-1); curveLoc++) {
+        for (int curveLoc = 0; curveLoc < nextSurface.getCurveSize(curveCount-1); curveLoc++) {
             int index = nextSurface.curveStartIndex(curveCount-1) + curveLoc;
             
             //Code to find pairs of adjacent triangles coming off the vertex
@@ -373,7 +373,7 @@ double EnergyFunction::evalEnergy(RadialSurface& extendedSurface)
     double totalMean = 0;
     double currentGauss;
     double currentMean;
-    for (int i = 0; i < extendedSurface.getCurveLength(curveCount-2); i++) {
+    for (int i = 0; i < extendedSurface.getCurveSize(curveCount-2); i++) {
         int index = extendedSurface.curveStartIndex(curveCount-2) + i;
         extendedSurface.curvatures(index, currentGauss, currentMean);
         totalGauss += currentGauss;

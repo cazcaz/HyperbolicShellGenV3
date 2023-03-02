@@ -10,15 +10,11 @@
 using Eigen::Vector3d;
 namespace fs = std::filesystem;
 
-ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius){
+ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius + m_parameters.extensionLength){
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
     m_outputDirectory ="./Surfaces/" + fileName;
-    m_curvatureDirectory = "./CurvatureTxts/" + fileName;
     fs::create_directory(m_outputDirectory);
-    fs::create_directory("./OutputSurfaceMeshes/" + fileName);
-    fs::create_directory(m_curvatureDirectory);
-    fs::create_directory("./CurvatureOutputPngs/" + fileName);
 };
 ShellGen::~ShellGen() {};
 
@@ -33,6 +29,7 @@ void ShellGen::setInitCurve() {
     circlemaker.makeCircle(m_parameters.radius + m_initLength, centre, nextRingRes, secondCurve);
     m_surface.addCurve(initCurve);
     m_surface.addCurve(secondCurve);
+    m_recordedExtensionLengths.push_back(m_parameters.extensionLength);
 }
 
 bool ShellGen::expandCurve() {
@@ -44,7 +41,6 @@ bool ShellGen::expandCurve() {
     std::vector<Vector3d> binormals;
     std::vector<Vector3d> tangents;
     double initialDist = m_parameters.radius;
-    m_radialDist += m_parameters.extensionLength;
     double lon = lengthFunction(m_radialDist, initialDist);
     int nextRingSize = int(lengthFunction(m_radialDist + m_parameters.extensionLength, initialDist) * m_parameters.resolution / (2 * M_PI * initialDist));
     if (curveCount == 1) {
@@ -95,12 +91,12 @@ bool ShellGen::expandCurve() {
 
     EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 500;
+    param.max_iterations = 200;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
     VectorXd input =  0 * VectorXd::Random(nextRingSize);
     for (int ignore = 0; ignore < nextRingSize; ignore++) {
-        input[ignore] += 0.5 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
+        input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     }
 
     // Used to make a linear approx. of the derivative for testing
@@ -117,8 +113,8 @@ bool ShellGen::expandCurve() {
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
         m_surface.addIterCount(iterCount);
-        if (iterCount == 500) {
-            m_parameters.extensionLength *= 0.5;
+        if (iterCount == 200) {
+            //m_parameters.extensionLength *= 0.5;
             std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
             //success = false;
         }
@@ -137,6 +133,8 @@ bool ShellGen::expandCurve() {
     }
     if (success) {
         m_surface.addCurve(nextCurve);
+        m_recordedExtensionLengths.push_back(m_parameters.extensionLength);
+        m_radialDist += m_parameters.extensionLength;
     }
     return true;
 }
@@ -185,6 +183,8 @@ void ShellGen::printSurface() {
     std::ofstream surfaceFile(m_outputDirectory +"/surface.txt");
     surfaceFile << m_surface;
     surfaceFile.close();
+
+
     //Calculate curvatures of every point to output to m_curvatureDirectory
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame){
     std::ofstream curvatureFile(m_outputDirectory +"/curvature.txt");
@@ -199,6 +199,25 @@ void ShellGen::printSurface() {
         }
     }
     curvatureFile.close();
+    }
+
+    //Calculate the lengths of each ring and output it to a length file with the desired length
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame){
+    std::ofstream lengthFile(m_outputDirectory +"/lengthProfile.txt");
+    int totalCurves = m_surface.getCurveCount();
+    double currentLength;
+    double expectedLength;
+    double currentRadius = m_parameters.radius;
+    for (int i =  0; i < totalCurves; i++){
+        currentLength = m_surface.getCurveLength(i);
+        expectedLength = lengthFunction(currentRadius,m_parameters.radius);
+        currentRadius += m_recordedExtensionLengths[i];
+        lengthFile << currentRadius << " " << currentLength << " " << expectedLength;
+        if (i != totalCurves-1){
+        lengthFile << ":";
+        }
+    }
+    lengthFile.close();
     }
 }
 
