@@ -7,6 +7,9 @@ searchPath = os.path.join(current, "Surfaces")
 count = 0
 for folder in os.listdir(searchPath):
     fullInputPath = os.path.join(searchPath, folder)
+    if folder == ".gitkeep":
+        continue
+    os.chdir(fullInputPath)
     if os.path.isdir(fullInputPath):
         surfaces = []
         fileNames = []
@@ -25,32 +28,28 @@ for folder in os.listdir(searchPath):
                             point = [float(coord) for coord in pointString]
                             neighbours = [[int(index) for index in indices.split(",")] for indices in triangleStrings]
                             currentSurface.append([point, neighbours])
-                        surfaces.append(currentSurface)
-        os.chdir(fullInputPath)
-        for surface, fileName in zip(surfaces, fileNames):
-            listVertices = []
-            listTriangles = []
-            point = 0
-            for pointTrianglePair in surface:
-                listVertices.append(pointTrianglePair[0])
-                for triangle in pointTrianglePair[1]:
-                    validTriangle = True
-                    for index in triangle:
-                        if point > index:
-                            validTriangle = False
-                            break
-                    if validTriangle:
-                        listTriangles.append(triangle)
-                point += 1
-            vertices = np.array(listVertices)
-            triangles = np.array(listTriangles)
-            surfaceMesh = mesh.Mesh(np.zeros(triangles.shape[0], dtype=mesh.Mesh.dtype))
-            for i, f in enumerate(triangles):
-                for j in range(3):
-                    surfaceMesh.vectors[i][j] = vertices[f[j],:]
-            surfaceMesh.save(os.path.abspath(fileName + '.stl'))
-            os.remove(fileName + '.txt')
-            count+= 1
-        os.chdir(current)
+                        listVertices = []
+                        listTriangles = []
+                        point = 0
+                        for pointTrianglePair in currentSurface:
+                            listVertices.append(pointTrianglePair[0])
+                            for triangle in pointTrianglePair[1]:
+                                validTriangle = True
+                                for index in triangle:
+                                    if point > index:
+                                        validTriangle = False
+                                        break
+                                if validTriangle:
+                                    listTriangles.append(triangle)
+                            point += 1
+                        vertices = np.array(listVertices)
+                        triangles = np.array(listTriangles)
+                        surfaceMesh = mesh.Mesh(np.zeros(triangles.shape[0], dtype=mesh.Mesh.dtype))
+                        for i, f in enumerate(triangles):
+                            for j in range(3):
+                                surfaceMesh.vectors[i][j] = vertices[f[j],:]
+                        surfaceMesh.save(os.path.abspath(filename + '.stl'))
+                        os.remove(filename)
+                        count+= 1
 
 print("Done, " , count , " .txt files converted to .stl.")
