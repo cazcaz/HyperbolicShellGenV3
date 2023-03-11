@@ -37,47 +37,38 @@ bool ShellGen::expandCurve() {
     if(curveCount == 0) {
         return false;
     }
-    std::vector<Vector3d> normals;
     std::vector<Vector3d> binormals;
+    std::vector<Vector3d> normals;
     std::vector<Vector3d> tangents;
     double initialDist = m_parameters.radius;
     double lon = lengthFunction(m_radialDist, initialDist);
     int nextRingSize = int(lengthFunction(m_radialDist + m_parameters.extensionLength, initialDist) * m_parameters.resolution / (2 * M_PI * initialDist));
+
+    double angleChange = 2 * M_PI / nextRingSize;
+    for (int i =0; i<nextRingSize;i++){
+            double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
+            Vector3d nextTangent = m_surface.getEdgeTangent(curveCount-1, pointParameter);
+            Vector3d nextNormal = m_surface.getEdgeNormal(curveCount-1, pointParameter);
+            if (nextNormal[2] == -1) {
+                nextNormal[2] = 1;
+            }
+            tangents.push_back(nextTangent);
+            normals.push_back(nextNormal);
+    }
+    
     if (curveCount == 1) {
         for (Vector3d firstCurvePoint : m_surface.getCurve(1)){
-            normals.push_back(firstCurvePoint.normalized());
+            binormals.push_back(firstCurvePoint.normalized());
         }
     } else {
         for (int i =0; i<nextRingSize;i++){
-            double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
-            Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter) - m_surface.getPoint(curveCount-2, pointParameter);
-            //Vector3d nextPoint(std::cos(pointParameter), std::sin(pointParameter), 0);
-            nextPoint.normalize();
-            normals.push_back(nextPoint);
+            Vector3d nextBinormal(tangents[i][1]*normals[i][2] - tangents[i][2]*normals[i][1], tangents[i][2]*normals[i][0] - tangents[i][0]*normals[i][2], tangents[i][0]*normals[i][1] - tangents[i][1]*normals[i][0]);
+            nextBinormal.normalize();
+            binormals.push_back(nextBinormal);
         }
     }
     //Nicely behaved tangents
-    double angleChange = 2 * M_PI / nextRingSize;
-    for (int i =0; i<nextRingSize;i++){
-            //Vector3d nextTangent(-std::sin(angleChange * i), std::cos(angleChange * i), 0);
-            double ballEdge1 = angleChange * i+0.000001;
-            double ballEdge2 = angleChange * i-0.000001;
-            if (ballEdge1 > 2*M_PI){
-                ballEdge1 -= 2*M_PI;
-            }
-            if (ballEdge2 > 2*M_PI){
-                ballEdge2 -= 2*M_PI;
-            }
-            Vector3d nextTangent = m_surface.getPoint(curveCount-1, ballEdge1) - m_surface.getPoint(curveCount-1, ballEdge2);
-            nextTangent.normalize();
-            Vector3d nextBinormal(normals[i][1]*nextTangent[2] - normals[i][2]*nextTangent[1] ,normals[i][2]*nextTangent[0] - normals[i][0]*nextTangent[2], normals[i][0]*nextTangent[1] - normals[i][1]*nextTangent[0]);
-            nextBinormal.normalize();
-            if (nextBinormal[2] == -1) {
-                nextBinormal[2] = 1;
-            }
-            tangents.push_back(nextTangent);
-            binormals.push_back(nextBinormal);
-    }
+    
 
     bool success = true;
 
@@ -89,28 +80,28 @@ bool ShellGen::expandCurve() {
         extendedPrevCurve.push_back(nextPoint);
     }
 
-    EnergyFunction energyFunctional(m_surface, extendedPrevCurve, normals, binormals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
+    EnergyFunction energyFunctional(m_surface, extendedPrevCurve, binormals, normals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
     LBFGSpp::LBFGSParam<double> param;
     param.max_iterations = 4000;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input =  0.01 * VectorXd::Random(nextRingSize);
+    VectorXd input =  0 * VectorXd::Random(nextRingSize);
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
         //input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     // }
 
     // Used to make a linear approx. of the derivative for testing
-    VectorXd inputChanged = input;
-    double h = 0.00000001;
-    inputChanged[10] += h;
-    VectorXd derivatives = VectorXd::Zero(nextRingSize);
-    double energy2;
-    energy2 = energyFunctional(inputChanged, derivatives);
-    energy = energyFunctional(input, derivatives);
-    // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
-    // std::cout << "Real: " << derivatives[10] << std::endl;
-    double tempEnergyComp = ((energy2 - energy)/h)/derivatives[10];
-    std::cout << "Resolution: " << m_parameters.resolution << " NextRingSize: " << nextRingSize << " Energy Ratio: " <<((energy2 - energy)/h)/derivatives[10] << std::endl;
+    // VectorXd inputChanged = input;
+    // double h = 0.00000001;
+    // inputChanged[10] += h;
+    // VectorXd derivatives = VectorXd::Zero(nextRingSize);
+    // double energy2;
+    // energy2 = energyFunctional(inputChanged, derivatives);
+    // energy = energyFunctional(input, derivatives);
+    // // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
+    // // std::cout << "Real: " << derivatives[10] << std::endl;
+    // double tempEnergyComp = ((energy2 - energy)/h)/derivatives[10];
+    // std::cout << "Resolution: " << m_parameters.resolution << " NextRingSize: " << nextRingSize << " Energy Ratio: " <<((energy2 - energy)/h)/derivatives[10] << std::endl;
     
     // std::cout << derivatives.transpose() << std::endl;
     try {
@@ -132,7 +123,7 @@ bool ShellGen::expandCurve() {
             std::cout << "Failed from nan input." << std::endl;
             return false;
         }
-        nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * normals[i] + m_parameters.extensionLength * input[i] * binormals[i]);
+        nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * binormals[i] + m_parameters.extensionLength * input[i] * normals[i]);
     }
     if (success) {
         m_surface.addCurve(nextCurve);

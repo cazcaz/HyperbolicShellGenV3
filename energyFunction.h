@@ -35,8 +35,8 @@ class EnergyFunction {
 
     private:
         RadialSurface m_surface;
-        std::vector<Vector3d> m_normals;
         std::vector<Vector3d> m_binormals;
+        std::vector<Vector3d> m_normals;
         std::vector<Vector3d> m_prevCurve;
         struct ShellParams& m_parameters;
         double m_radialDist;

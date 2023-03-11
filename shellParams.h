@@ -5,9 +5,9 @@ struct ShellParams {
     double centreY = 0;
     double centreZ = 0;
     double radius = 1;
-    int resolution = 80;
+    int resolution = 50;
     int expansions = 30;
-    double extensionLength = 0.2;
+    double extensionLength = 0.1;
     double meanStiffness = 0.01;
     double gaussStiffness = 0.1;
     double desiredCurvature = -0.01;

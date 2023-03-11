@@ -7,15 +7,15 @@ using Eigen::VectorXd;
 
 EnergyFunction::EnergyFunction(RadialSurface& surface,
                                std::vector<Vector3d>& extendedPrevCurve,
-                               std::vector<Vector3d>& normals,
                                std::vector<Vector3d>& binormals,
+                               std::vector<Vector3d>& normals,
                                ShellParams& parameters,
                                double radialDist,
                                std::string outputDirectory) :
                                m_surface(surface) , 
                                m_prevCurve(extendedPrevCurve) ,
-                               m_normals(normals) ,
                                m_binormals(binormals) ,
+                               m_normals(normals) ,
                                m_parameters(parameters) ,
                                m_radialDist(radialDist),
                                m_firstRun(true),
@@ -42,7 +42,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     int curveCount = m_surface.getCurveCount();
     int curveSize = inputs.size();
     for (int i=0; i<curveSize; i++) {
-        nextCurve.push_back(m_prevCurve[i] + m_parameters.extensionLength * m_normals[i] + m_parameters.extensionLength * inputs[i] * m_binormals[i]);
+        nextCurve.push_back(m_prevCurve[i] + m_parameters.extensionLength * m_binormals[i] + m_parameters.extensionLength * inputs[i] * m_normals[i]);
         derivatives[i] = 0;
     }
     RadialSurface nextSurface(m_surface);
@@ -76,7 +76,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     
     double springNaturalLength = lengthFunction(m_radialDist,m_parameters.radius)/double(curveSize);
     for (int outerCurveIndex = 0; outerCurveIndex < curveSize; outerCurveIndex++) {
-            Vector3d currentDeriv = m_parameters.extensionLength*m_binormals[outerCurveIndex];
+            Vector3d currentDeriv = m_parameters.extensionLength*m_normals[outerCurveIndex];
 
             //Get the 5 vectors contributing to length and its derivatives, corrected for the boundaries of the curve
             prev2Vec = prevVec;

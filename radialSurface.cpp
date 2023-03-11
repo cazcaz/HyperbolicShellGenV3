@@ -10,7 +10,7 @@ RadialSurface::~RadialSurface()
 
 void RadialSurface::addCurve(std::vector<Vector3d> newCurve)
 {
-
+    std::vector<double> segmentLengths;
     for (Vector3d point : newCurve) {
         addPoint(point);
     }
@@ -28,6 +28,11 @@ void RadialSurface::addCurve(std::vector<Vector3d> newCurve)
         double rangeCounterOld = 0.5* pointGapOld;
         double rangeCounterNew = 0;
         for(int i = 0; i < newCurveSize; i++) {
+            if (i < newCurveSize-1){
+                segmentLengths.push_back((newCurve[i] - newCurve[i+1]).norm());
+            } else {
+                segmentLengths.push_back((newCurve[i] - newCurve[0]).norm());
+            }
             int currentIndex = curveStartIndex(m_curveCount-1) + i;
             if (rangeCounterNew > rangeCounterOld){
                 rangeCounterOld += pointGapOld;
@@ -38,16 +43,38 @@ void RadialSurface::addCurve(std::vector<Vector3d> newCurve)
             rangeCounterNew += pointGapNew;
         }
         addTriangle(Triangle(correctIndex(m_curveCount - 2, -1) + curveStartIndex(m_curveCount-2),  curveStartIndex(m_curveCount-2),curveStartIndex(m_curveCount - 1)));
+    } else {
+        for(int i = 0; i < newCurveSize; i++) {
+            if (i < newCurveSize-1){
+                segmentLengths.push_back((newCurve[i] - newCurve[i+1]).norm());
+            } else {
+                segmentLengths.push_back((newCurve[i] - newCurve[0]).norm());
+            }
+        }
     }
+    m_segmentLengths.push_back(segmentLengths);
 }
 
 Vector3d RadialSurface::getPoint(int curve, double s)
 {
-    double pointLocation =  s*double(m_curveLengths[curve])/(2 * M_PI);
-    //s is the radial parameter in [0, 2 * pi)
-    int prevIndex = int(pointLocation);
-    double lineRatio = pointLocation - prevIndex;
-    return getPoint(curve, correctIndex(curve, prevIndex)) + lineRatio * (getPoint(curve, correctIndex(curve, prevIndex + 1)) - getPoint(curve, correctIndex(curve, prevIndex)));
+    double curveLength = getCurveLength(curve);
+    int curvePointCount = getCurveSize(curve);
+    double rescaledS = s/(2*M_PI) * curveLength;
+    int segmentCount = 0;
+    double currentLength = m_segmentLengths[curve][0];
+    while (currentLength < rescaledS) {
+        segmentCount += 1;
+        currentLength += m_segmentLengths[curve][segmentCount];
+    }
+    double tParam = rescaledS - currentLength;
+    int secondIndex = segmentCount+1;
+    if (secondIndex >= curvePointCount) {
+        secondIndex -= curvePointCount;
+    }
+    Vector3d edgeStart = getPoint(curve, segmentCount);
+    Vector3d edgeEnd = getPoint(curve, secondIndex);
+    Vector3d finalPoint = edgeStart + tParam/m_segmentLengths[curve][segmentCount] * (edgeEnd - edgeStart);
+    return finalPoint;
 }
 
 Vector3d RadialSurface::getPoint(int curve, int index)
@@ -56,7 +83,56 @@ Vector3d RadialSurface::getPoint(int curve, int index)
     return getPos(newIndex);
 }
 
+Vector3d RadialSurface::getEdgeNormal(int curve, double s)
+{
+    double curveLength = getCurveLength(curve);
+    int curvePointCount = getCurveSize(curve);
+    double rescaledS = s/(2*M_PI) * curveLength;
+    int segmentCount = 0;
+    double currentLength = m_segmentLengths[curve][0];
+    while (currentLength < rescaledS) {
+        segmentCount += 1;
+        currentLength += m_segmentLengths[curve][segmentCount];
+    }
+    int secondIndex = segmentCount+1;
+    if (secondIndex >= curvePointCount) {
+        secondIndex -= curvePointCount;
+    }
+    std::vector<Triangle> firstsegmentTringles = getNeighbourTriangles(curveStartIndex(curve)+segmentCount);
+    Vector3d normal;
+    for (Triangle triangle : firstsegmentTringles) {
+        if (triangle.vertex3 == secondIndex + curveStartIndex(curve)) {
+            Vector3d edge1 = getPos(triangle.vertex3) - getPos(triangle.vertex1);
+            Vector3d edge2 = getPos(triangle.vertex2) - getPos(triangle.vertex1);
+            normal = Vector3d(edge1[1]*edge2[2] - edge1[2]*edge2[1] ,edge1[2]*edge2[0] - edge1[0]*edge2[2], edge1[0]*edge2[1] - edge1[1]*edge2[0]);
+        }
+    }
+    normal.normalize();
 
+    return normal;
+}
+
+Vector3d RadialSurface::getEdgeTangent(int curve, double s)
+{
+    double curveLength = getCurveLength(curve);
+    int curvePointCount = getCurveSize(curve);
+    double rescaledS = s/(2*M_PI) * curveLength;
+    int segmentCount = 0;
+    double currentLength = m_segmentLengths[curve][0];
+    while (currentLength < rescaledS) {
+        segmentCount += 1;
+        currentLength += m_segmentLengths[curve][segmentCount];
+    }
+    int secondIndex = segmentCount+1;
+    if (secondIndex >= curvePointCount) {
+        secondIndex -= curvePointCount;
+    }
+    Vector3d edgeStart = getPoint(curve, segmentCount);
+    Vector3d edgeEnd = getPoint(curve, secondIndex);
+    Vector3d tangent = (edgeEnd - edgeStart).normalized();
+    return tangent;
+    
+}
 
 std::vector<Vector3d> RadialSurface::getCurve(int curveNumber)
 {
