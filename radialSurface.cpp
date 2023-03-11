@@ -66,6 +66,7 @@ Vector3d RadialSurface::getPoint(int curve, double s)
         segmentCount += 1;
         currentLength += m_segmentLengths[curve][segmentCount];
     }
+    currentLength -= m_segmentLengths[curve][segmentCount];
     double tParam = rescaledS - currentLength;
     int secondIndex = segmentCount+1;
     if (secondIndex >= curvePointCount) {

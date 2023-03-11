@@ -40,7 +40,7 @@ int main(int, char**) {
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 5;
+    parameters.expansions = 1;
     parameters.desiredCurvature = -1;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();

@@ -53,7 +53,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     
     bool lengthEnergy = false;
     bool bendEnergy = true;
-    bool springEnergy = false;
+    bool springEnergy = true;
 
     double totalEnergy = 0;
     double totalLength = 0;
@@ -92,7 +92,6 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
             //Length of currently viewed edge, given by indices i and i-1
             double prevLength = (prevVec-currentVec).norm();
             //Bending contributions
-            std::cout << m_parameters.bendingStiffness * bendingEnergy(prevVec, currentVec, nextVec) << std::endl;
             totalBendingEnergy += m_parameters.bendingStiffness * bendingEnergy(prevVec, currentVec, nextVec);
             bendDerivs[outerCurveIndex] += (bendEnergy) ? m_parameters.bendingStiffness * (bendingEnergyDeriv(currentVec,nextVec,next2Vec,currentDeriv,zeroVec,zeroVec) + bendingEnergyDeriv(prevVec,currentVec,nextVec,zeroVec,currentDeriv,zeroVec) + bendingEnergyDeriv(prev2Vec,prevVec,currentVec,zeroVec,zeroVec,currentDeriv)) : 0;
             

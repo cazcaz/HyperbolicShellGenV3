@@ -85,7 +85,7 @@ bool ShellGen::expandCurve() {
     param.max_iterations = 4000;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input =  0 * VectorXd::Random(nextRingSize);
+    VectorXd input =  0.01 * VectorXd::Random(nextRingSize);
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
         //input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     // }
@@ -98,20 +98,20 @@ bool ShellGen::expandCurve() {
     // double energy2;
     // energy2 = energyFunctional(inputChanged, derivatives);
     // energy = energyFunctional(input, derivatives);
-    // // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
-    // // std::cout << "Real: " << derivatives[10] << std::endl;
+    // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
+    // std::cout << "Real: " << derivatives[10] << std::endl;
     // double tempEnergyComp = ((energy2 - energy)/h)/derivatives[10];
     // std::cout << "Resolution: " << m_parameters.resolution << " NextRingSize: " << nextRingSize << " Energy Ratio: " <<((energy2 - energy)/h)/derivatives[10] << std::endl;
     
     // std::cout << derivatives.transpose() << std::endl;
     try {
-        // int iterCount = solver.minimize(energyFunctional, input, energy);
-        // m_surface.addIterCount(iterCount);
-        // if (iterCount == 4000) {
-        //     m_parameters.extensionLength *= 0.5;
-        //     std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-        //     success = false;
-        // }
+        int iterCount = solver.minimize(energyFunctional, input, energy);
+        m_surface.addIterCount(iterCount);
+        if (iterCount == 4000) {
+            m_parameters.extensionLength *= 0.5;
+            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            success = false;
+        }
     } catch(...) {
         std::cout << "Failed from error in calculation." << std::endl;
         return false;
