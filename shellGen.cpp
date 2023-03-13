@@ -82,12 +82,12 @@ bool ShellGen::expandCurve() {
 
     EnergyFunction energyFunctional(m_surface, extendedPrevCurve, binormals, normals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 4000;
+    param.max_iterations = 500;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input =  0.01 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.5 * VectorXd::Random(nextRingSize);
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
-        //input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
+    //     input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     // }
 
     // Used to make a linear approx. of the derivative for testing
@@ -107,10 +107,10 @@ bool ShellGen::expandCurve() {
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
         m_surface.addIterCount(iterCount);
-        if (iterCount == 4000) {
+        if (iterCount == 500) {
             m_parameters.extensionLength *= 0.5;
             std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
-            success = false;
+            success = true;
         }
     } catch(...) {
         std::cout << "Failed from error in calculation." << std::endl;
@@ -118,14 +118,17 @@ bool ShellGen::expandCurve() {
     }
 
     std::vector<Vector3d> nextCurve;
+    //std::vector<Vector3d> testCurve;
     for (int i =0; i<nextRingSize;i++) {
         if (std::isnan(input[i])){
             std::cout << "Failed from nan input." << std::endl;
             return false;
         }
         nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * binormals[i] + m_parameters.extensionLength * input[i] * normals[i]);
+        //testCurve.push_back(extendedPrevCurve[i]);
     }
     if (success) {
+        //m_surface.addCurve(testCurve);
         m_surface.addCurve(nextCurve);
         m_recordedExtensionLengths.push_back(m_parameters.extensionLength);
         m_radialDist += m_parameters.extensionLength;
@@ -217,10 +220,6 @@ void ShellGen::printSurface() {
 }
 
 double ShellGen::lengthFunction(double t, double t0){
-    double desCurv = m_parameters.desiredCurvature;
-    if (desCurv < 0) {
-        desCurv *= -1;
-    }
-    double sqrtDC = std::sqrt(desCurv);
+    double sqrtDC = std::sqrt(std::abs(m_parameters.desiredCurvature));
     return 2 * M_PI * ( 1/sqrtDC * std::sinh(sqrtDC * (t-t0)) + t0);
 };

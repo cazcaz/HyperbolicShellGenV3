@@ -48,7 +48,7 @@ for folder in os.listdir(searchPath):
                         for i, f in enumerate(triangles):
                             for j in range(3):
                                 surfaceMesh.vectors[i][j] = vertices[f[j],:]
-                        surfaceMesh.save(os.path.abspath(filename + '.stl'))
+                        surfaceMesh.save(os.path.abspath(filename[:-4] + '.stl'))
                         os.remove(filename)
                         count+= 1
 

@@ -18,17 +18,16 @@ int main(int, char**) {
     // parameters.centreX = 0;
     // parameters.centreY = 0;
     // parameters.centreZ = 0;
-    // parameters.desiredCurvature = -1;
-    // parameters.expansions = 1;
-    // parameters.resolution = 10;
+    // parameters.desiredCurvature = -0.01;
+    // parameters.expansions = 30;
+    // parameters.resolution = 100;
     // parameters.extensionLength = 0.1;
-    // parameters.bendingStiffness = 0.1;
 
 
-    //     for (int k=21; k < 101; k++){
-    //         parameterList.push_back(parameters);
-    //         parameters.resolution = k;
-    //     }
+    // for (int k=0; k < 101; k++){
+    //     parameterList.push_back(parameters);
+    //     parameters.desiredCurvature -= 0.1;
+    // }
 
     // // for (int j=0; j < 10; j++){
     // // parameterList.push_back(parameters);
@@ -40,7 +39,7 @@ int main(int, char**) {
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 1;
+    parameters.expansions = 15;
     parameters.desiredCurvature = -1;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();

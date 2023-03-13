@@ -115,7 +115,7 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
         totalEnergy += totalSpringEnergy;
     }
     if (bendEnergy) {
-        derivatives += 0.5*bendDerivs;
+        derivatives += bendDerivs;
         totalEnergy += totalBendingEnergy;
     }
 
@@ -175,11 +175,7 @@ Vector3d EnergyFunction::crossDeriv(Vector3d &a, Vector3d &b, Vector3d &da, Vect
 }
 
 double EnergyFunction::lengthFunction(double t, double t0){
-    double desCurv = m_parameters.desiredCurvature;
-    if (desCurv < 0) {
-        desCurv *= -1;
-    }
-    double sqrtDC = std::sqrt(desCurv);
+    double sqrtDC = std::sqrt(std::abs(m_parameters.desiredCurvature));
     double length = 2 * M_PI * ( 1/sqrtDC * std::sinh(sqrtDC * (t-t0)) + t0);
     return length;
 };

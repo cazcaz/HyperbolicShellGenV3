@@ -20,39 +20,32 @@ void RadialSurface::addCurve(std::vector<Vector3d> newCurve)
     }
     int newCurveSize = newCurve.size();
     m_curveLengths.push_back(newCurveSize);
-    m_curveCount += 1;
-    if (!initCurve) {
-        int currentConnectionIndex = curveStartIndex(m_curveCount-2);
-        double pointGapOld = 1/double(m_curveLengths[m_curveCount-2]);
-        double pointGapNew = 1/double(newCurveSize);
-        double rangeCounterOld = 0.5* pointGapOld;
-        double rangeCounterNew = 0;
-        for(int i = 0; i < newCurveSize; i++) {
-            if (i < newCurveSize-1){
-                segmentLengths.push_back((newCurve[i] - newCurve[i+1]).norm());
-            } else {
-                segmentLengths.push_back((newCurve[i] - newCurve[0]).norm());
-            }
-            int currentIndex = curveStartIndex(m_curveCount-1) + i;
-            if (rangeCounterNew > rangeCounterOld){
-                rangeCounterOld += pointGapOld;
-                currentConnectionIndex += 1;
-                addTriangle(Triangle(currentIndex, currentConnectionIndex - 1, currentConnectionIndex));
-            }
-            addTriangle(Triangle(currentIndex, currentConnectionIndex ,curveStartIndex(m_curveCount - 1) +  correctIndex(m_curveCount-1, currentIndex+1 - curveStartIndex(m_curveCount - 1))));
-            rangeCounterNew += pointGapNew;
-        }
-        addTriangle(Triangle(correctIndex(m_curveCount - 2, -1) + curveStartIndex(m_curveCount-2),  curveStartIndex(m_curveCount-2),curveStartIndex(m_curveCount - 1)));
-    } else {
-        for(int i = 0; i < newCurveSize; i++) {
-            if (i < newCurveSize-1){
-                segmentLengths.push_back((newCurve[i] - newCurve[i+1]).norm());
-            } else {
-                segmentLengths.push_back((newCurve[i] - newCurve[0]).norm());
-            }
+    for(int i = 0; i < newCurveSize; i++) {
+        if (i < newCurveSize-1){
+            segmentLengths.push_back((newCurve[i] - newCurve[i+1]).norm());
+        } else {
+            segmentLengths.push_back((newCurve[i] - newCurve[0]).norm());
         }
     }
     m_segmentLengths.push_back(segmentLengths);
+    m_curveCount += 1;
+    if (!initCurve) {
+        double curveLength = getCurveLength(m_curveCount-2);
+        int currentConnectionIndex = curveStartIndex(m_curveCount-2);
+        double currentLength = 0.5 * m_segmentLengths[m_curveCount-2][0];
+        int lastCurveSize = getCurveSize(m_curveCount-2);
+        for(int i = 0; i < newCurveSize; i++) {
+            double rescaledS = double(i)*curveLength/double(newCurveSize);
+            int currentIndex = curveStartIndex(m_curveCount-1) + i;
+            if (currentLength < rescaledS){
+                currentLength += 0.5*(m_segmentLengths[m_curveCount-2][currentConnectionIndex-curveStartIndex(m_curveCount-2) + 1] + m_segmentLengths[m_curveCount-2][currentConnectionIndex-curveStartIndex(m_curveCount-2)]);
+                currentConnectionIndex += 1;
+                addTriangle(Triangle(currentIndex, currentConnectionIndex-1, currentConnectionIndex));
+            }  
+            addTriangle(Triangle(currentIndex, currentConnectionIndex,curveStartIndex(m_curveCount - 1) +  correctIndex(m_curveCount-1, currentIndex+1 - curveStartIndex(m_curveCount - 1))));
+        }
+        addTriangle(Triangle(correctIndex(m_curveCount - 2, -1) + curveStartIndex(m_curveCount-2),  curveStartIndex(m_curveCount-2),curveStartIndex(m_curveCount - 1)));
+    } 
 }
 
 Vector3d RadialSurface::getPoint(int curve, double s)

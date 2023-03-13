@@ -45,13 +45,13 @@ class Surface {
             for (int j = 0; j < neighbours.size();j++) {
                 if (j == neighbours.size()-1) {
                     if (i == surface.m_points.size() - 1){
-                        os << neighbours[j].vertex1 << "," << neighbours[j].vertex2 << "," << neighbours[j].vertex3;
+                        os << std::fixed << neighbours[j].vertex1 << "," << neighbours[j].vertex2 << "," << neighbours[j].vertex3;
                     } else {
-                        os << neighbours[j].vertex1 << "," << neighbours[j].vertex2 << "," << neighbours[j].vertex3;
+                        os << std::fixed << neighbours[j].vertex1 << "," << neighbours[j].vertex2 << "," << neighbours[j].vertex3;
                         os << "|";
                     }
                 } else {
-                    os << neighbours[j].vertex1 << "," << neighbours[j].vertex2 << "," << neighbours[j].vertex3;
+                    os << std::fixed << neighbours[j].vertex1 << "," << neighbours[j].vertex2 << "," << neighbours[j].vertex3;
                     os << "~";
                 }
             }
