@@ -93,8 +93,8 @@ public:
         if (fpast > 0)
             m_fx[0] = fx;
 
-        std::cout << "x0 = " << x.transpose() << std::endl;
-        std::cout << "f(x0) = " << fx << ", ||grad|| = " << m_gnorm << std::endl << std::endl;
+        // std::cout << "x0 = " << x.transpose() << std::endl;
+        // std::cout << "f(x0) = " << fx << ", ||grad|| = " << m_gnorm << std::endl << std::endl;
 
         // Early exit if the initial x is already a minimizer
         if (m_gnorm <= m_param.epsilon || m_gnorm <= m_param.epsilon_rel * x.norm())
@@ -125,9 +125,9 @@ public:
             // New gradient norm
             m_gnorm = m_grad.norm();
 
-            std::cout << "Iter " << k << " finished line search" << std::endl;
+            // std::cout << "Iter " << k << " finished line search" << std::endl;
             // std::cout << "   x = " << x.transpose() << std::endl;
-            std::cout << "   f(x) = " << fx << ", ||grad|| = " << m_gnorm << std::endl << std::endl;
+            // std::cout << "   f(x) = " << fx << ", ||grad|| = " << m_gnorm << std::endl << std::endl;
 
             // Convergence test -- gradient
             if (m_gnorm <= m_param.epsilon || m_gnorm <= m_param.epsilon_rel * x.norm())

@@ -11,7 +11,7 @@ struct ShellParams {
     double desiredCurvature = -0.01;
     double strainCoeff = 10000;
     double lengthStiffness = 1;
-    double bendingStiffness = 1000;
+    double bendingStiffness = 10;
     double period = 4;
-    bool saveEveryFrame = false;
+    bool saveEveryFrame = true;
 };

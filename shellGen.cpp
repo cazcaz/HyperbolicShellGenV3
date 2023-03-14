@@ -82,7 +82,7 @@ bool ShellGen::expandCurve() {
 
     EnergyFunction energyFunctional(m_surface, extendedPrevCurve, binormals, normals, m_parameters, m_radialDist + m_parameters.extensionLength, m_outputDirectory);
     LBFGSpp::LBFGSParam<double> param;
-    param.max_iterations = 500;
+    param.max_iterations = 200;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
     VectorXd input = 0.5 * VectorXd::Random(nextRingSize);
@@ -107,8 +107,8 @@ bool ShellGen::expandCurve() {
     try {
         int iterCount = solver.minimize(energyFunctional, input, energy);
         m_surface.addIterCount(iterCount);
-        if (iterCount == 500) {
-            m_parameters.extensionLength *= 0.5;
+        if (iterCount == 200) {
+            //m_parameters.extensionLength *= 0.5;
             std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
             success = true;
         }
@@ -133,6 +133,7 @@ bool ShellGen::expandCurve() {
         m_recordedExtensionLengths.push_back(m_parameters.extensionLength);
         m_radialDist += m_parameters.extensionLength;
     }
+    m_recordedInputs.push_back(input);
     return true;
 }
 
@@ -189,11 +190,16 @@ void ShellGen::printSurface() {
     int totalVertices = m_surface.surfaceSize();
     double currentMeanCurv;
     double currentGaussCurv;
-    for (int i =  m_surface.curveStartIndex(1); i < m_surface.curveStartIndex(m_surface.getCurveCount()-1); i++){
-        m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
-        curvatureFile << currentGaussCurv << " " << currentMeanCurv;
-        if (i != m_surface.curveStartIndex(m_surface.getCurveCount()-1)-1){
-        curvatureFile << ":";
+    for (int currentCurve = 2; currentCurve < m_surface.getCurveCount(); currentCurve++){
+        for (int i = m_surface.curveStartIndex(currentCurve-1); i < m_surface.curveStartIndex(currentCurve); i++){
+            m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
+            curvatureFile << currentGaussCurv << " " << currentMeanCurv;
+            if (i != m_surface.curveStartIndex(currentCurve) - 1){
+            curvatureFile << ":";
+            }
+        }
+        if (currentCurve != m_surface.getCurveCount() - 1){
+            curvatureFile << "|";
         }
     }
     curvatureFile.close();
@@ -216,6 +222,23 @@ void ShellGen::printSurface() {
         }
     }
     lengthFile.close();
+    }
+
+    //Output inputs for input graph
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame){
+    std::ofstream displacementsFile(m_outputDirectory +"/displacements.txt");
+    for (int inputsIndex = 0; inputsIndex<m_recordedInputs.size(); inputsIndex++) {
+        for (int inputIndex=0; inputIndex < m_recordedInputs[inputsIndex].size();inputIndex++) {
+            displacementsFile << std::fixed << m_recordedInputs[inputsIndex][inputIndex];
+            if (inputIndex != m_recordedInputs[inputsIndex].size()-1) {
+                displacementsFile << ",";
+            }
+        }
+        if (inputsIndex != m_recordedInputs.size()-1) {
+            displacementsFile << "|";
+        }
+    }
+    displacementsFile.close();
     }
 }
 

@@ -33,4 +33,5 @@ class ShellGen {
         double m_radialDist;
         std::string m_outputDirectory = "";
         std::vector<double> m_recordedExtensionLengths;
+        std::vector<VectorXd> m_recordedInputs;
 };

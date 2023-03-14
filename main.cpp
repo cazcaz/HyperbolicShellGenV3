@@ -39,7 +39,7 @@ int main(int, char**) {
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 15;
+    parameters.expansions = 30;
     parameters.desiredCurvature = -1;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();
@@ -52,5 +52,7 @@ int main(int, char**) {
     system("sudo python3 curvTxtToPng.py");
     std::cout << "Generating length profile .png s" << std::endl;
     system("sudo python3 lengthTxtToPng.py");
+    std::cout << "Generating displacement profile .png s" << std::endl;
+    system("sudo python3 dispToPng.py");
     return 0;
 }
