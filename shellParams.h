@@ -10,8 +10,9 @@ struct ShellParams {
     double extensionLength = 0.1;
     double desiredCurvature = -0.01;
     double strainCoeff = 10000;
-    double lengthStiffness = 1;
-    double bendingStiffness = 10;
+    double lengthStiffness = 100;
+    double bendingStiffness = 100;
     double period = 4;
-    bool saveEveryFrame = true;
+    bool saveEveryFrame = false;
+    int surfaceIndex = 0;
 };

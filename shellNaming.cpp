@@ -10,7 +10,7 @@ ShellName::~ShellName()
 
 std::string ShellName::makeName(ShellParams &parameters)
 {   
-    std::string name = "Rad" +doubleConverter(parameters.radius) + "Ex" + doubleConverter(parameters.expansions) + "ExL" + doubleConverter(parameters.extensionLength) + "DC" + doubleConverter(parameters.desiredCurvature) + "Str" + doubleConverter(parameters.strainCoeff) + "Bs" + doubleConverter(parameters.bendingStiffness) + "P"+doubleConverter(parameters.period);
+    std::string name = "I" + std::to_string(parameters.surfaceIndex) + "Rad" +doubleConverter(parameters.radius) + "ExL" + doubleConverter(parameters.extensionLength) + "DC" + doubleConverter(parameters.desiredCurvature) + "Ls" + doubleConverter(parameters.lengthStiffness) + "Bs" + doubleConverter(parameters.bendingStiffness) + "P"+doubleConverter(parameters.period);
     return name;
 }
 

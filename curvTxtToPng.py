@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from math import pi
+from scipy.interpolate import interp1d
 import warnings
 warnings.filterwarnings("ignore", message="The get_cmap function was deprecated in Matplotlib 3.7 and will be removed two minor releases later")
 
@@ -47,20 +48,28 @@ for folder in os.listdir(searchPath):
             currentRadius = 1
             gaussColours = []
             meanColours = []
+            allGaussColours = []
+            allMeanColours = []
             for curve in surface:
                 currentCurveLength = len(curve)
+                currentGaussCurvatures = []
+                currentMeanCuravtures = []
                 thetaChange = 2 * pi/currentCurveLength
                 currentTheta = 0
                 for data in curve:
                     thetaInputs.append(currentTheta)
                     radiusInputs.append(currentRadius)
                     currentTheta += thetaChange
-                    gaussColours.append(data[0])
-                    meanColours.append(data[1])
+                    currentGaussCurvatures.append(data[0][0])
+                    currentMeanCuravtures.append(data[1][0])
+                    allGaussColours.append(data[0][0])
+                    allMeanColours.append(data[1][0])
+                gaussColours.append(currentGaussCurvatures)
+                meanColours.append(currentMeanCuravtures)
                 currentRadius += 0.1
 
-            q1g, q3g = np.percentile(gaussColours, [25, 75])
-            q1m, q3m = np.percentile(meanColours, [25, 75])
+            q1g, q3g = np.percentile(allGaussColours, [25, 75])
+            q1m, q3m = np.percentile(allMeanColours, [25, 75])
             iqrg = q3g - q1g
             iqrm = q3m - q1m
             threshold = 1.5
@@ -69,8 +78,28 @@ for folder in os.listdir(searchPath):
             lower_boundg = q1g - threshold*iqrg
             lower_boundm = q1m - threshold*iqrm
 
-            gaussColours = np.clip(np.array(gaussColours), lower_boundg, upper_boundg)
-            meanColours = np.clip(np.array(meanColours), lower_boundm, upper_boundm)
+            longestLength = len(gaussColours[-1])
+            interpolatedGaussColours = []
+            interpolatedMeanColours = []
+            for gaussColourList in gaussColours:
+                thetas = np.linspace(0, 2*np.pi, len(gaussColourList))
+                newThetas = np.linspace(0, 2*np.pi, longestLength)
+                interpolationFunction = interp1d(thetas, np.array(gaussColourList), kind = 'cubic')
+                interpolatedGauss = interpolationFunction(newThetas)
+                interpolatedGaussColours.append(interpolatedGauss)
+            
+            for meanColourList in meanColours:
+                thetas = np.linspace(0, 2*np.pi, len(meanColourList))
+                newThetas = np.linspace(0, 2*np.pi, longestLength)
+                interpolationFunction = interp1d(thetas, np.array(meanColourList), kind = 'cubic')
+                interpolatedMean = interpolationFunction(newThetas)
+                interpolatedMeanColours.append(interpolatedMean)
+
+            gaussColours = np.clip(np.array(interpolatedGaussColours), lower_boundg, upper_boundg).T
+            meanColours = np.clip(np.array(interpolatedMeanColours), lower_boundm, upper_boundm).T
+
+            theta, r = np.mgrid[0:2*np.pi:len(surface[-1])*1j, min(radiusInputs):max(radiusInputs):len(surface) *1j]
+            
 
             fig = plt.figure(figsize=(10,6))
             ax1 = fig.add_subplot(121, projection='polar')
@@ -84,8 +113,8 @@ for folder in os.listdir(searchPath):
             ax2.set_thetagrids([])
             ax2.set_rorigin(0.5)
             cmap = plt.cm.get_cmap('bwr')
-            sc1 = ax1.scatter(thetaInputs, radiusInputs, c=gaussColours, cmap=cmap, alpha=0.8, edgecolor='none')
-            sc2 = ax2.scatter(thetaInputs, radiusInputs, c=meanColours, cmap=cmap, alpha=0.8, edgecolor='none')
+            sc1 = ax1.pcolormesh(theta, r, gaussColours, cmap=cmap)
+            sc2 = ax2.pcolormesh(theta, r, meanColours, cmap=cmap)
             cbar1 = plt.colorbar(sc1, ax=ax1, orientation='horizontal')
             cbar2 = plt.colorbar(sc2, ax=ax2, orientation='horizontal')
             cbar1.set_label('Discrete Gaussian Curvatures')

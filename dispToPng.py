@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from math import pi
+from scipy.interpolate import interp1d
 import warnings
 warnings.filterwarnings("ignore", message="The get_cmap function was deprecated in Matplotlib 3.7 and will be removed two minor releases later")
 
@@ -37,6 +38,7 @@ for folder in os.listdir(searchPath):
             currentRadius = 1
             displacements = []
             for curve in surface:
+                currentDisplacements =[]
                 currentCurveLength = len(curve)
                 thetaChange = 2 * pi/currentCurveLength
                 currentTheta = 0
@@ -44,8 +46,19 @@ for folder in os.listdir(searchPath):
                     thetaInputs.append(currentTheta)
                     radiusInputs.append(currentRadius)
                     currentTheta += thetaChange
-                    displacements.append(displacement)
+                    currentDisplacements.append(displacement)
                 currentRadius += 0.1
+                displacements.append(currentDisplacements)
+
+            longestLength = len(displacements[-1])
+            interpolatedDisplacements = []
+            for displacementList in displacements:
+                thetas = np.linspace(0, 2*np.pi, len(displacementList))
+                newThetas = np.linspace(0, 2*np.pi, longestLength)
+                interpolationFunction = interp1d(thetas, np.array(displacementList), kind = 'cubic')
+                interpolatedDisplacement = interpolationFunction(newThetas)
+                interpolatedDisplacements.append(interpolatedDisplacement)
+
 
             # q1, q3 = np.percentile(gaussColours, [25, 75])
             # iqr = q3 - q1
@@ -54,6 +67,8 @@ for folder in os.listdir(searchPath):
             # lower_boundg = q1 - threshold*iqr
 
             # displacements = np.clip(np.array(displacements), lower_bound, upper_bound)
+            theta, r = np.mgrid[0:2*np.pi:len(surface[-1])*1j, min(radiusInputs):max(radiusInputs):len(surface) *1j]
+            z = np.array(interpolatedDisplacements).T
 
             fig = plt.figure(figsize=(5,6))
             ax1 = fig.add_subplot(111, projection='polar')
@@ -62,7 +77,7 @@ for folder in os.listdir(searchPath):
             ax1.set_thetagrids([])
             ax1.set_rorigin(0.5)
             cmap = plt.cm.get_cmap('PiYG')
-            sc1 = ax1.scatter(thetaInputs, radiusInputs, c=displacements, cmap=cmap, alpha=0.8, edgecolor='none')
+            sc1 = ax1.pcolormesh(theta, r, z, cmap=cmap)
             cbar1 = plt.colorbar(sc1, ax=ax1, orientation='horizontal')
             cbar1.set_label('Input Values')
             ax1.set_title('Input Values')

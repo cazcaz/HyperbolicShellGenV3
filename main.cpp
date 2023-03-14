@@ -11,22 +11,24 @@ int main(int, char**) {
 
     // std::vector<ShellParams> parameterList;
     // BatchGen massCalcer;
-    // // double meanStiffChange = (0.01 - 0.0001)/10;
-    // // double gaussStiffChange = (0.01 - 0.0001)/10;
-    // double bendStiffChange = (0.1 - 0.001)/100;
+    // double bendStiffChange = (10 - 0.1)/31;
+    // double lengthStiffChange = (10 - 0.1)/31;
     // ShellParams parameters;
     // parameters.centreX = 0;
     // parameters.centreY = 0;
     // parameters.centreZ = 0;
     // parameters.desiredCurvature = -0.01;
-    // parameters.expansions = 30;
-    // parameters.resolution = 100;
+    // parameters.expansions = 23;
     // parameters.extensionLength = 0.1;
 
 
-    // for (int k=0; k < 101; k++){
-    //     parameterList.push_back(parameters);
-    //     parameters.desiredCurvature -= 0.1;
+    // for (int k=0; k < 31; k++){
+    //     for (int j=0; j < 31; j++)
+    //         parameterList.push_back(parameters);
+    //         parameters.bendingStiffness += bendStiffChange;
+    //         parameters.surfaceIndex += 1;
+    //     parameters.lengthStiffness += lengthStiffChange;
+    //     parameters.bendingStiffness = 0.1;
     // }
 
     // // for (int j=0; j < 10; j++){
@@ -39,7 +41,7 @@ int main(int, char**) {
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 30;
+    parameters.expansions = 23;
     parameters.desiredCurvature = -1;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();

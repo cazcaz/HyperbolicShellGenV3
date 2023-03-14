@@ -10,7 +10,7 @@
 using Eigen::Vector3d;
 namespace fs = std::filesystem;
 
-ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius + m_parameters.extensionLength){
+ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius + m_parameters.extensionLength*0.2){
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
     m_outputDirectory ="./Surfaces/" + fileName;
@@ -25,8 +25,8 @@ void ShellGen::setInitCurve() {
     std::vector<Vector3d> secondCurve;
     CircleGen circlemaker;
     circlemaker.makeCircle(m_parameters.radius, centre, m_parameters.resolution, initCurve);
-    int nextRingRes = lengthFunction(m_parameters.radius + m_initLength, m_parameters.radius) * m_parameters.resolution / (2 * M_PI * m_parameters.radius);
-    circlemaker.makeCircle(m_parameters.radius + m_initLength, centre, nextRingRes, secondCurve);
+    int nextRingRes = lengthFunction(m_parameters.radius + m_initLength* 0.2, m_parameters.radius) * m_parameters.resolution / (2 * M_PI * m_parameters.radius);
+    circlemaker.makeCircle(m_parameters.radius + m_initLength * 0.2, centre, nextRingRes, secondCurve);
     m_surface.addCurve(initCurve);
     m_surface.addCurve(secondCurve);
     m_recordedExtensionLengths.push_back(m_parameters.extensionLength);
