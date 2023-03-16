@@ -4,9 +4,10 @@
 #include <cstdlib>
 
 using Eigen::Vector3d;
-int main(int, char**) {
+int main(int, char **)
+{
     system("sudo ./cleanup.sh");
-    
+
     // // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
 
     // std::vector<ShellParams> parameterList;
@@ -20,7 +21,6 @@ int main(int, char**) {
     // parameters.desiredCurvature = -0.01;
     // parameters.expansions = 23;
     // parameters.extensionLength = 0.1;
-
 
     // for (int k=0; k < 31; k++){
     //     for (int j=0; j < 31; j++)
@@ -41,7 +41,7 @@ int main(int, char**) {
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 5;
+    parameters.expansions = 10;
     parameters.desiredCurvature = -1;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();

@@ -10,15 +10,17 @@
 using Eigen::Vector3d;
 namespace fs = std::filesystem;
 
-ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius){
+ShellGen::ShellGen(ShellParams &parameters) : m_parameters(parameters), m_initLength(parameters.extensionLength), m_radialDist(parameters.radius)
+{
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
-    m_outputDirectory ="./Surfaces/" + fileName;
+    m_outputDirectory = "./Surfaces/" + fileName;
     fs::create_directory(m_outputDirectory);
 };
-ShellGen::~ShellGen() {};
+ShellGen::~ShellGen(){};
 
-void ShellGen::setInitCurve() {
+void ShellGen::setInitCurve()
+{
     Vector3d centre(m_parameters.centreX, m_parameters.centreY, m_parameters.centreZ);
     m_surface = RadialSurface();
     std::vector<Vector3d> initCurve;
@@ -28,9 +30,11 @@ void ShellGen::setInitCurve() {
     m_surface.addCurve(initCurve);
 }
 
-bool ShellGen::expandCurve() {
+bool ShellGen::expandCurve()
+{
     int curveCount = m_surface.getCurveCount();
-    if(curveCount == 0) {
+    if (curveCount == 0)
+    {
         return false;
     }
     std::vector<Vector3d> binormals;
@@ -43,17 +47,22 @@ bool ShellGen::expandCurve() {
     double angleChange = 2 * M_PI / nextRingSize;
 
     // Keep to remove the need to have an initial expansion before the normal growth
-    //Should change nothing
-    for (int i = 0; i<nextRingSize;i++){
-        double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
+    // Should change nothing
+    for (int i = 0; i < nextRingSize; i++)
+    {
+        double pointParameter = 2 * M_PI * double(i) / double(nextRingSize);
         Vector3d nextTangent, nextNormal;
-        if (curveCount == 1) {
-            nextTangent = Vector3d(-std::sin(pointParameter), std::cos(pointParameter),0);
-            nextNormal = Vector3d(0,0,1);
-        } else {
-            nextTangent = m_surface.getEdgeTangent(curveCount-1, pointParameter);
-            nextNormal = m_surface.getEdgeNormal(curveCount-1, pointParameter);
-            if (nextNormal[2] == -1) {
+        if (curveCount == 1)
+        {
+            nextTangent = Vector3d(-std::sin(pointParameter), std::cos(pointParameter), 0);
+            nextNormal = Vector3d(0, 0, 1);
+        }
+        else
+        {
+            nextTangent = m_surface.getEdgeTangent(curveCount - 1, pointParameter);
+            nextNormal = m_surface.getEdgeNormal(curveCount - 1, pointParameter);
+            if (nextNormal[2] == -1)
+            {
                 nextNormal[2] = 1;
             }
         }
@@ -61,30 +70,21 @@ bool ShellGen::expandCurve() {
         normals.push_back(nextNormal);
     }
 
-    // for (int i =0; i<nextRingSize;i++){
-    //         double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
-    //         Vector3d nextTangent = m_surface.getEdgeTangent(curveCount-1, pointParameter);
-    //         Vector3d nextNormal = m_surface.getEdgeNormal(curveCount-1, pointParameter);
-    //         if (nextNormal[2] == -1) {
-    //             nextNormal[2] = 1;
-    //         }
-    //         tangents.push_back(nextTangent);
-    //         normals.push_back(nextNormal);
-    // }
-    
-    for (int i =0; i<nextRingSize;i++){
-        Vector3d nextBinormal(tangents[i][1]*normals[i][2] - tangents[i][2]*normals[i][1], tangents[i][2]*normals[i][0] - tangents[i][0]*normals[i][2], tangents[i][0]*normals[i][1] - tangents[i][1]*normals[i][0]);
+    for (int i = 0; i < nextRingSize; i++)
+    {
+        Vector3d nextBinormal(tangents[i][1] * normals[i][2] - tangents[i][2] * normals[i][1], tangents[i][2] * normals[i][0] - tangents[i][0] * normals[i][2], tangents[i][0] * normals[i][1] - tangents[i][1] * normals[i][0]);
         nextBinormal.normalize();
         binormals.push_back(nextBinormal);
     }
 
     bool success = true;
 
-    //minimsation time
+    // minimsation time
     std::vector<Vector3d> extendedPrevCurve;
-    for (int i = 0; i < nextRingSize; i++) {
-        double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
-        Vector3d nextPoint = m_surface.getPoint(curveCount-1, pointParameter);
+    for (int i = 0; i < nextRingSize; i++)
+    {
+        double pointParameter = 2 * M_PI * double(i) / double(nextRingSize);
+        Vector3d nextPoint = m_surface.getPoint(curveCount - 1, pointParameter);
         extendedPrevCurve.push_back(nextPoint);
     }
 
@@ -94,7 +94,6 @@ bool ShellGen::expandCurve() {
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
     VectorXd input = 0 * VectorXd::Random(nextRingSize);
-    input[0] += 1;
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
     //     input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     // }
@@ -111,33 +110,40 @@ bool ShellGen::expandCurve() {
     // std::cout << "Real: " << derivatives[10] << std::endl;
     // double tempEnergyComp = ((energy2 - energy)/h)/derivatives[10];
     // std::cout << "Resolution: " << m_parameters.resolution << " NextRingSize: " << nextRingSize << " Energy Ratio: " <<((energy2 - energy)/h)/derivatives[10] << std::endl;
-    
+
     // std::cout << derivatives.transpose() << std::endl;
-    try {
+    try
+    {
         int iterCount = solver.minimize(energyFunctional, input, energy);
         m_surface.addIterCount(iterCount);
-        if (iterCount == 200) {
-            //m_parameters.extensionLength *= 0.5;
+        if (iterCount == 200)
+        {
+            // m_parameters.extensionLength *= 0.5;
             std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
             success = true;
         }
-    } catch(...) {
+    }
+    catch (...)
+    {
         std::cout << "Failed from error in calculation." << std::endl;
-        //return false;
+        // return false;
     }
 
     std::vector<Vector3d> nextCurve;
-    //std::vector<Vector3d> testCurve;
-    for (int i =0; i<nextRingSize;i++) {
-        if (std::isnan(input[i])){
+    // std::vector<Vector3d> testCurve;
+    for (int i = 0; i < nextRingSize; i++)
+    {
+        if (std::isnan(input[i]))
+        {
             std::cout << "Failed from nan input." << std::endl;
             return false;
         }
         nextCurve.push_back(extendedPrevCurve[i] + m_parameters.extensionLength * binormals[i] + m_parameters.extensionLength * input[i] * normals[i]);
-        //testCurve.push_back(extendedPrevCurve[i]);
+        // testCurve.push_back(extendedPrevCurve[i]);
     }
-    if (success) {
-        //m_surface.addCurve(testCurve);
+    if (success)
+    {
+        // m_surface.addCurve(testCurve);
         m_surface.addCurve(nextCurve);
         m_recordedExtensionLengths.push_back(m_parameters.extensionLength);
         m_radialDist += m_parameters.extensionLength;
@@ -146,21 +152,28 @@ bool ShellGen::expandCurve() {
     return true;
 }
 
-void ShellGen::expandCurveNTimes() {
-    if (m_parameters.expansions == 0) {
+void ShellGen::expandCurveNTimes()
+{
+    if (m_parameters.expansions == 0)
+    {
         int k = 0;
-        //set a max to stop it getting ridiculous
-        while (expandCurve() && k < 4000) {
+        // set a max to stop it getting ridiculous
+        while (expandCurve() && k < 4000)
+        {
             k++;
         }
         return;
-    } else {
-        for (int iteration = 0; iteration < m_parameters.expansions; iteration++){
+    }
+    else
+    {
+        for (int iteration = 0; iteration < m_parameters.expansions; iteration++)
+        {
             // std::cout << iteration << std::endl;
             // if (iteration % 10) {
             //     printSurface();
             // }
-            if (!expandCurve()){
+            if (!expandCurve())
+            {
                 m_parameters.expansions = iteration;
                 return;
             }
@@ -169,89 +182,107 @@ void ShellGen::expandCurveNTimes() {
     m_parameters.expansions = m_surface.getCurveCount();
 }
 
-int ShellGen::correctIndex(int index){
-    if (index >= m_parameters.resolution) {
+int ShellGen::correctIndex(int index)
+{
+    if (index >= m_parameters.resolution)
+    {
         return correctIndex(index - m_parameters.resolution);
-    } else if (index < 0) {
+    }
+    else if (index < 0)
+    {
         return correctIndex(index + m_parameters.resolution);
     }
     return index;
 };
 
-void ShellGen::printSurface() {
-
+void ShellGen::printSurface()
+{
 
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
     int surfaceLength = m_surface.getCurveCount();
-    if (surfaceLength < 2) {
-        //not enough information to make a surface
+    if (surfaceLength < 2)
+    {
+        // not enough information to make a surface
         return;
     }
-    std::ofstream surfaceFile(m_outputDirectory +"/surface.txt");
+    std::ofstream surfaceFile(m_outputDirectory + "/surface.txt");
     surfaceFile << m_surface;
     surfaceFile.close();
 
-
-    //Calculate curvatures of every point to output to m_curvatureDirectory
-    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame){
-    std::ofstream curvatureFile(m_outputDirectory +"/curvature.txt");
-    int totalVertices = m_surface.surfaceSize();
-    double currentMeanCurv;
-    double currentGaussCurv;
-    for (int currentCurve = 2; currentCurve < m_surface.getCurveCount(); currentCurve++){
-        for (int i = m_surface.curveStartIndex(currentCurve-1); i < m_surface.curveStartIndex(currentCurve); i++){
-            m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
-            curvatureFile << currentGaussCurv << " " << currentMeanCurv;
-            if (i != m_surface.curveStartIndex(currentCurve) - 1){
-            curvatureFile << ":";
+    // Calculate curvatures of every point to output to m_curvatureDirectory
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
+    {
+        std::ofstream curvatureFile(m_outputDirectory + "/curvature.txt");
+        int totalVertices = m_surface.surfaceSize();
+        double currentMeanCurv;
+        double currentGaussCurv;
+        for (int currentCurve = 2; currentCurve < m_surface.getCurveCount(); currentCurve++)
+        {
+            for (int i = m_surface.curveStartIndex(currentCurve - 1); i < m_surface.curveStartIndex(currentCurve); i++)
+            {
+                m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
+                curvatureFile << currentGaussCurv << " " << currentMeanCurv;
+                if (i != m_surface.curveStartIndex(currentCurve) - 1)
+                {
+                    curvatureFile << ":";
+                }
+            }
+            if (currentCurve != m_surface.getCurveCount() - 1)
+            {
+                curvatureFile << "|";
             }
         }
-        if (currentCurve != m_surface.getCurveCount() - 1){
-            curvatureFile << "|";
-        }
-    }
-    curvatureFile.close();
+        curvatureFile.close();
     }
 
-    //Calculate the lengths of each ring and output it to a length file with the desired length
-    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame){
-    std::ofstream lengthFile(m_outputDirectory +"/lengthProfile.txt");
-    int totalCurves = m_surface.getCurveCount();
-    double currentLength;
-    double expectedLength;
-    double currentRadius = m_parameters.radius;
-    for (int i =  0; i < totalCurves; i++){
-        currentLength = m_surface.getCurveLength(i);
-        expectedLength = lengthFunction(currentRadius,m_parameters.radius);
-        currentRadius += m_recordedExtensionLengths[i];
-        lengthFile << currentRadius << " " << currentLength << " " << expectedLength;
-        if (i != totalCurves-1){
-        lengthFile << ":";
-        }
-    }
-    lengthFile.close();
-    }
-
-    //Output inputs for input graph
-    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame){
-    std::ofstream displacementsFile(m_outputDirectory +"/displacements.txt");
-    for (int inputsIndex = 0; inputsIndex<m_recordedInputs.size(); inputsIndex++) {
-        for (int inputIndex=0; inputIndex < m_recordedInputs[inputsIndex].size();inputIndex++) {
-            displacementsFile << std::fixed << m_recordedInputs[inputsIndex][inputIndex];
-            if (inputIndex != m_recordedInputs[inputsIndex].size()-1) {
-                displacementsFile << ",";
+    // Calculate the lengths of each ring and output it to a length file with the desired length
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
+    {
+        std::ofstream lengthFile(m_outputDirectory + "/lengthProfile.txt");
+        int totalCurves = m_surface.getCurveCount();
+        double currentLength;
+        double expectedLength;
+        double currentRadius = m_parameters.radius;
+        for (int i = 0; i < totalCurves; i++)
+        {
+            currentLength = m_surface.getCurveLength(i);
+            expectedLength = lengthFunction(currentRadius, m_parameters.radius);
+            currentRadius += m_recordedExtensionLengths[i];
+            lengthFile << currentRadius << " " << currentLength << " " << expectedLength;
+            if (i != totalCurves - 1)
+            {
+                lengthFile << ":";
             }
         }
-        if (inputsIndex != m_recordedInputs.size()-1) {
-            displacementsFile << "|";
-        }
+        lengthFile.close();
     }
-    displacementsFile.close();
+
+    // Output inputs for input graph
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
+    {
+        std::ofstream displacementsFile(m_outputDirectory + "/displacements.txt");
+        for (int inputsIndex = 0; inputsIndex < m_recordedInputs.size(); inputsIndex++)
+        {
+            for (int inputIndex = 0; inputIndex < m_recordedInputs[inputsIndex].size(); inputIndex++)
+            {
+                displacementsFile << std::fixed << m_recordedInputs[inputsIndex][inputIndex];
+                if (inputIndex != m_recordedInputs[inputsIndex].size() - 1)
+                {
+                    displacementsFile << ",";
+                }
+            }
+            if (inputsIndex != m_recordedInputs.size() - 1)
+            {
+                displacementsFile << "|";
+            }
+        }
+        displacementsFile.close();
     }
 }
 
-double ShellGen::lengthFunction(double t, double t0){
+double ShellGen::lengthFunction(double t, double t0)
+{
     double sqrtDC = std::sqrt(std::abs(m_parameters.desiredCurvature));
-    return 2 * M_PI * ( 1/sqrtDC * std::sinh(sqrtDC * (t-t0)) + t0);
+    return 2 * M_PI * (1 / sqrtDC * std::sinh(sqrtDC * (t - t0)) + t0);
 };

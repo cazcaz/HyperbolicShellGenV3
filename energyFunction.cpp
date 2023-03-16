@@ -5,32 +5,33 @@
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-EnergyFunction::EnergyFunction(RadialSurface& surface,
-                               std::vector<Vector3d>& extendedPrevCurve,
-                               std::vector<Vector3d>& binormals,
-                               std::vector<Vector3d>& normals,
-                               ShellParams& parameters,
+EnergyFunction::EnergyFunction(RadialSurface &surface,
+                               std::vector<Vector3d> &extendedPrevCurve,
+                               std::vector<Vector3d> &binormals,
+                               std::vector<Vector3d> &normals,
+                               ShellParams &parameters,
                                double radialDist,
-                               std::string outputDirectory) :
-                               m_surface(surface) , 
-                               m_prevCurve(extendedPrevCurve) ,
-                               m_binormals(binormals) ,
-                               m_normals(normals) ,
-                               m_parameters(parameters) ,
-                               m_radialDist(radialDist),
-                               m_firstRun(true),
-                               m_outDirectory(outputDirectory) {
-};
+                               std::string outputDirectory) : m_surface(surface),
+                                                              m_prevCurve(extendedPrevCurve),
+                                                              m_binormals(binormals),
+                                                              m_normals(normals),
+                                                              m_parameters(parameters),
+                                                              m_radialDist(radialDist),
+                                                              m_firstRun(true),
+                                                              m_outDirectory(outputDirectory){};
 
 EnergyFunction::~EnergyFunction() = default;
 
-double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives){
-    //Pre-processing
+double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
+{
+    // Pre-processing
 
-    if (m_parameters.saveEveryFrame) {
-        if (m_surface.getCurveCount() > 2) {
+    if (m_parameters.saveEveryFrame)
+    {
+        if (m_surface.getCurveCount() > 2)
+        {
             std::string fileName = std::to_string(m_surface.getIterCount());
-            std::string outfileName = m_outDirectory+"/frame" + fileName + "surface.txt";
+            std::string outfileName = m_outDirectory + "/frame" + fileName + "surface.txt";
             std::ofstream outfile(outfileName);
             outfile << m_surface;
             outfile.close();
@@ -41,19 +42,20 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     std::vector<Vector3d> nextCurve;
     int curveCount = m_surface.getCurveCount();
     int curveSize = inputs.size();
-    for (int i=0; i<curveSize; i++) {
+    for (int i = 0; i < curveSize; i++)
+    {
         nextCurve.push_back(m_prevCurve[i] + m_parameters.extensionLength * m_binormals[i] + m_parameters.extensionLength * inputs[i] * m_normals[i]);
         derivatives[i] = 0;
     }
     RadialSurface nextSurface(m_surface);
     nextSurface.addCurve(nextCurve);
-    Vector3d zeroVec(0,0,0);
+    Vector3d zeroVec(0, 0, 0);
 
-    //Use these booleans to quickly enable and disable wanted energy contributions
-    
+    // Use these booleans to quickly enable and disable wanted energy contributions
+
     bool lengthEnergy = false;
     bool bendEnergy = true;
-    bool springEnergy = true;
+    bool springEnergy = false;
 
     double totalEnergy = 0;
     double totalLength = 0;
@@ -65,56 +67,63 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     VectorXd bendDerivs(curveSize);
 
     Vector3d prev2Vec, prevVec, currentVec, nextVec, next2Vec;
-    prev2Vec = nextCurve[curveSize-3];
-    prevVec = nextCurve[curveSize-2];
-    currentVec = nextCurve[curveSize-1];
+    prev2Vec = nextCurve[curveSize - 3];
+    prevVec = nextCurve[curveSize - 2];
+    currentVec = nextCurve[curveSize - 1];
     nextVec = nextCurve[0];
     next2Vec = nextCurve[1];
-    double rescaleTerm = 1;//rescaleEnergyFunction(m_radialDist, m_parameters.radius, nextCurveLength);
+    double rescaleTerm = 1; // rescaleEnergyFunction(m_radialDist, m_parameters.radius, nextCurveLength);
     // Loop over every vertex of the new curve to find the length of the next curve
     // Also calculate the derivatives for the lengths and adds them
-    
-    double springNaturalLength = lengthFunction(m_radialDist,m_parameters.radius)/double(curveSize);
-    for (int outerCurveIndex = 0; outerCurveIndex < curveSize; outerCurveIndex++) {
-            Vector3d currentDeriv = m_parameters.extensionLength*m_normals[outerCurveIndex];
 
-            //Get the 5 vectors contributing to length and its derivatives, corrected for the boundaries of the curve
-            prev2Vec = prevVec;
-            prevVec = currentVec;
-            currentVec = nextVec;
-            nextVec = next2Vec;
-            if (outerCurveIndex >= curveSize-2) {
-                next2Vec = nextCurve[outerCurveIndex + 2 - curveSize];
-            } else {
-                next2Vec = nextCurve[outerCurveIndex + 2];
-            }
+    double springNaturalLength = lengthFunction(m_radialDist, m_parameters.radius) / double(curveSize);
+    for (int outerCurveIndex = 0; outerCurveIndex < curveSize; outerCurveIndex++)
+    {
+        Vector3d currentDeriv = m_parameters.extensionLength * m_normals[outerCurveIndex];
 
-            //Length of currently viewed edge, given by indices i and i-1
-            double prevLength = (prevVec-currentVec).norm();
-            //Bending contributions
-            totalBendingEnergy += m_parameters.bendingStiffness * bendingEnergy(prevVec, currentVec, nextVec);
-            bendDerivs[outerCurveIndex] += (bendEnergy) ? m_parameters.bendingStiffness * (bendingEnergyDeriv(currentVec,nextVec,next2Vec,currentDeriv,zeroVec,zeroVec) + bendingEnergyDeriv(prevVec,currentVec,nextVec,zeroVec,currentDeriv,zeroVec) + bendingEnergyDeriv(prev2Vec,prevVec,currentVec,zeroVec,zeroVec,currentDeriv)) : 0;
-            
-            //Length contributions
-            totalLength += prevLength;
-            lengthDerivs[outerCurveIndex] = (lengthEnergy) ? normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) : 0;
-            
-            //Spring Contributions
-            totalSpringEnergy += 0.5 * m_parameters.strainCoeff * std::pow(prevLength - springNaturalLength,2);
-            springDerivs[outerCurveIndex] = (springEnergy) ? m_parameters.strainCoeff * (normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) * (prevLength-springNaturalLength) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) * ((nextVec - currentVec).norm()-springNaturalLength)) : 0;
+        // Get the 5 vectors contributing to length and its derivatives, corrected for the boundaries of the curve
+        prev2Vec = prevVec;
+        prevVec = currentVec;
+        currentVec = nextVec;
+        nextVec = next2Vec;
+        if (outerCurveIndex >= curveSize - 2)
+        {
+            next2Vec = nextCurve[outerCurveIndex + 2 - curveSize];
         }
-    // Now we have the derivatives of the length at each vertex, we can multiply them by the coefficient depending on the total length to get the correct values
-    double lengthDerivCoeff = m_parameters.lengthStiffness * (totalLength - lengthFunction(m_radialDist,m_parameters.radius));
-    lengthDerivs *= lengthDerivCoeff;
-    if (lengthEnergy) {
-        derivatives += lengthDerivs;
-        totalEnergy += 0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist,m_parameters.radius),2);
+        else
+        {
+            next2Vec = nextCurve[outerCurveIndex + 2];
+        }
+
+        // Length of currently viewed edge, given by indices i and i-1
+        double prevLength = (prevVec - currentVec).norm();
+        // Bending contributions
+        totalBendingEnergy += m_parameters.bendingStiffness * bendingEnergy(prevVec, currentVec, nextVec);
+        bendDerivs[outerCurveIndex] += (bendEnergy) ? m_parameters.bendingStiffness * (bendingEnergyDeriv(currentVec, nextVec, next2Vec, currentDeriv, zeroVec, zeroVec) + bendingEnergyDeriv(prevVec, currentVec, nextVec, zeroVec, currentDeriv, zeroVec) + bendingEnergyDeriv(prev2Vec, prevVec, currentVec, zeroVec, zeroVec, currentDeriv)) : 0;
+
+        // Length contributions
+        totalLength += prevLength;
+        lengthDerivs[outerCurveIndex] = (lengthEnergy) ? normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) : 0;
+
+        // Spring Contributions
+        totalSpringEnergy += 0.5 * m_parameters.strainCoeff * std::pow(prevLength - springNaturalLength, 2);
+        springDerivs[outerCurveIndex] = (springEnergy) ? m_parameters.strainCoeff * (normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) * (prevLength - springNaturalLength) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) * ((nextVec - currentVec).norm() - springNaturalLength)) : 0;
     }
-    if (springEnergy) {
+    // Now we have the derivatives of the length at each vertex, we can multiply them by the coefficient depending on the total length to get the correct values
+    double lengthDerivCoeff = m_parameters.lengthStiffness * (totalLength - lengthFunction(m_radialDist, m_parameters.radius));
+    lengthDerivs *= lengthDerivCoeff;
+    if (lengthEnergy)
+    {
+        derivatives += lengthDerivs;
+        totalEnergy += 0.5 * m_parameters.lengthStiffness * std::pow(totalLength - lengthFunction(m_radialDist, m_parameters.radius), 2);
+    }
+    if (springEnergy)
+    {
         derivatives += springDerivs;
         totalEnergy += totalSpringEnergy;
     }
-    if (bendEnergy) {
+    if (bendEnergy)
+    {
         derivatives += bendDerivs;
         totalEnergy += totalBendingEnergy;
     }
@@ -126,40 +135,45 @@ double EnergyFunction::operator()(const VectorXd& inputs, VectorXd& derivatives)
     return rescaleTerm * totalEnergy;
 };
 
-Vector3d EnergyFunction::normalVecDiffDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db){
+Vector3d EnergyFunction::normalVecDiffDeriv(Vector3d &a, Vector3d &b, Vector3d &da, Vector3d &db)
+{
     // Returns the derivative of (a-b)/|a-b|
-    double norm = (a-b).norm();
-    if (norm == 0) {
+    double norm = (a - b).norm();
+    if (norm == 0)
+    {
         std::cout << "Division by 0!" << std::endl;
-        return Vector3d(0,0,0);
+        return Vector3d(0, 0, 0);
     }
-    return (da-db)/norm - ((da-db).dot(a-b)/std::pow(norm,3)) * (a-b);
+    return (da - db) / norm - ((da - db).dot(a - b) / std::pow(norm, 3)) * (a - b);
 };
 
-double EnergyFunction::normDiffDeriv(Vector3d& a, Vector3d& b, Vector3d& da, Vector3d& db){
+double EnergyFunction::normDiffDeriv(Vector3d &a, Vector3d &b, Vector3d &da, Vector3d &db)
+{
     // Returns the derivative of |a-b|
-    double norm = (a-b).norm();
-    if (norm == 0) {
+    double norm = (a - b).norm();
+    if (norm == 0)
+    {
         std::cout << "Division by 0!" << std::endl;
         return 0;
     }
-    return (a-b).dot(da-db)/norm;
+    return (a - b).dot(da - db) / norm;
 }
 Vector3d EnergyFunction::normVecDeriv(Vector3d &a, Vector3d &da)
 {
     // Derivative of a/|a|
     double anorm = a.norm();
-    if (anorm == 0) {
+    if (anorm == 0)
+    {
         std::cout << "Division by 0!" << std::endl;
-        return Vector3d(0,0,0);
+        return Vector3d(0, 0, 0);
     }
-    double dnorm = a.dot(da)/anorm;
-    return (anorm * da - dnorm * a)/std::pow(anorm,2);
+    double dnorm = a.dot(da) / anorm;
+    return (anorm * da - dnorm * a) / std::pow(anorm, 2);
 }
 
 Vector3d EnergyFunction::crossProd(Vector3d &a, Vector3d &b)
 {
-    return Vector3d(a[1]*b[2] - a[2]*b[1] ,a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]);
+    return Vector3d(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]);
 }
 
 double EnergyFunction::dotDeriv(Vector3d &a, Vector3d &b, Vector3d &da, Vector3d &db)
@@ -171,57 +185,64 @@ double EnergyFunction::dotDeriv(Vector3d &a, Vector3d &b, Vector3d &da, Vector3d
 Vector3d EnergyFunction::crossDeriv(Vector3d &a, Vector3d &b, Vector3d &da, Vector3d &db)
 {
     // Derivative of the cross product of two vectors
-    return crossProd(da,b) + crossProd(a,db);
+    return crossProd(da, b) + crossProd(a, db);
 }
 
-double EnergyFunction::lengthFunction(double t, double t0){
+double EnergyFunction::lengthFunction(double t, double t0)
+{
     double sqrtDC = std::sqrt(std::abs(m_parameters.desiredCurvature));
-    double length = 2 * M_PI * ( 1/sqrtDC * std::sinh(sqrtDC * (t-t0)) + t0);
+    double length = 2 * M_PI * (1 / sqrtDC * std::sinh(sqrtDC * (t - t0)) + t0);
     return length;
 };
 
-double EnergyFunction::bendingEnergy(Vector3d a, Vector3d b, Vector3d c){
+double EnergyFunction::bendingEnergy(Vector3d a, Vector3d b, Vector3d c)
+{
     // 1/(l1 + l2) * tan^2 ((pi-theta)/2), theta is the angle between the c-b and a-b
-    double cosAngle = (c-b).normalized().dot((a-b).normalized());
-    if ((c-b).norm() == 0 && (a-b).norm() == 0) {
+    double cosAngle = (c - b).normalized().dot((a - b).normalized());
+    if ((c - b).norm() == 0 && (a - b).norm() == 0)
+    {
         std::cout << "Division by 0 error!" << std::endl;
         return 0;
     }
-    if (cosAngle > 1) {
+    if (cosAngle > 1)
+    {
         cosAngle = 1;
-    } else if (cosAngle < -1) {
+    }
+    else if (cosAngle < -1)
+    {
         cosAngle = -1;
     }
-    return (1/((c-b).norm() + (a-b).norm()) * std::pow(std::tan((M_PI - std::acos(cosAngle))/2),2));
+    return (1 / ((c - b).norm() + (a - b).norm()) * std::pow(std::tan((M_PI - std::acos(cosAngle)) / 2), 2));
 };
 
 double EnergyFunction::bendingEnergyDeriv(Vector3d a, Vector3d b, Vector3d c, Vector3d da, Vector3d db, Vector3d dc)
 {
     // d/dx (a-b).(c-b)/|a-b||c-b|
-    double dCosAngle = ((c-b).normalized().dot(normalVecDiffDeriv(a,b,da,db)) + (a-b).normalized().dot(normalVecDiffDeriv(c,b,dc,db)));
+    double dCosAngle = ((c - b).normalized().dot(normalVecDiffDeriv(a, b, da, db)) + (a - b).normalized().dot(normalVecDiffDeriv(c, b, dc, db)));
 
     //(a-b).(c-b)/|a-b||c-b|
-    double cosAngle = (c-b).normalized().dot((a-b).normalized());
+    double cosAngle = (c - b).normalized().dot((a - b).normalized());
 
     // |a-b|
-    double norm1 = (a-b).norm();
+    double norm1 = (a - b).norm();
 
     // |c-b|
-    double norm2 = (c-b).norm();
+    double norm2 = (c - b).norm();
 
     // d/dx |a-b|
-    double dnorm1 = normDiffDeriv(a,b,da,db);
+    double dnorm1 = normDiffDeriv(a, b, da, db);
 
     // d/dx |c-b|
-    double dnorm2 = normDiffDeriv(c,b,dc,db);
+    double dnorm2 = normDiffDeriv(c, b, dc, db);
 
     // d/dx 1/(l1+l2) tan^2((pi - std::acos(cosAngle))/2)
-    double fullDeriv = ((std::pow(cosAngle,2) - 1)*(dnorm1 + dnorm2) + 2*(norm1+norm2)*dCosAngle)/(std::pow((cosAngle-1)*(norm1+norm2),2));
+    double fullDeriv = ((std::pow(cosAngle, 2) - 1) * (dnorm1 + dnorm2) + 2 * (norm1 + norm2) * dCosAngle) / (std::pow((cosAngle - 1) * (norm1 + norm2), 2));
     return fullDeriv;
 };
 
-double EnergyFunction::rescaleEnergyFunction(double current, double init, int nextCurveLength){
-    return 1/(std::pow(nextCurveLength,2));
+double EnergyFunction::rescaleEnergyFunction(double current, double init, int nextCurveLength)
+{
+    return 1 / (std::pow(nextCurveLength, 2));
 };
 
 // MEAN, GAUSSIAN AND AREA ENERGY CALCULATIONS, MOVED HERE TO AVOID CLUTTER IN FUNCTIONS AND NOT CURRENTLY USED
@@ -237,7 +258,7 @@ double EnergyFunction::rescaleEnergyFunction(double current, double init, int ne
 // if (meanCurvatureEnergy || gaussCurvatureEnergy || areaEnergy) {
 //         for (int curveLoc = 0; curveLoc < nextSurface.getCurveSize(curveCount-1); curveLoc++) {
 //             int index = nextSurface.curveStartIndex(curveCount-1) + curveLoc;
-            
+
 //             //Code to find pairs of adjacent triangles coming off the vertex
 
 //             auto key_selector = [](auto pair){return pair.first;};
@@ -264,7 +285,7 @@ double EnergyFunction::rescaleEnergyFunction(double current, double init, int ne
 
 //             double area = 0;
 //             double angleSum = 0;
-            
+
 //             // Goes through pairs of edges adjacent to eachother and calculates curvatures and areas of the triangles formed
 
 //             for (int trianglePairIndex : keys) {
@@ -292,7 +313,7 @@ double EnergyFunction::rescaleEnergyFunction(double current, double init, int ne
 //                     } else if (vertexAngle < -1) {
 //                         vertexAngle = -1;
 //                     }
-//                     angleSum += std::acos(vertexAngle); 
+//                     angleSum += std::acos(vertexAngle);
 //                     curvatureSum += length * std::atan2(edge.normalized().dot(crossProd(norm2,norm1)), norm2.dot(norm1));
 //                 }
 //             }
@@ -340,7 +361,7 @@ double EnergyFunction::rescaleEnergyFunction(double current, double init, int ne
 //                     bool focusedIndex = (triangle1.vertex3 == nextFocusPoint);
 //                     bool leftFocus = (triangle1.vertex2 == nextFocusPoint);
 //                     int derivativeIndex = nextSurface.correctIndex(curveCount, nextFocusPoint);
-                    
+
 //                     triangleEdge1 = nextSurface.getPos(triangle1.vertex2) - currentPoint;
 //                     triangleEdge2 = nextSurface.getPos(triangle1.vertex3) - currentPoint;
 //                     triangleEdge3 = nextSurface.getPos(triangle2.vertex2) - currentPoint;
@@ -352,7 +373,7 @@ double EnergyFunction::rescaleEnergyFunction(double current, double init, int ne
 //                     norm2 = crossProd(triangleEdge3, triangleEdge4).normalized();
 
 //                     // Gauss derivative calculation
-                    
+
 //                     Vector3d centrePoint = nextSurface.getPos(triangle1.vertex3);  // p2
 //                     Vector3d leftNeighbour = nextSurface.getPos(triangle1.vertex2); // p1
 //                     Vector3d rightNeighbour = nextSurface.getPos(triangle2.vertex3); // p3
@@ -376,16 +397,16 @@ double EnergyFunction::rescaleEnergyFunction(double current, double init, int ne
 //                     double dt2 = angleDeriv(vertexAngle2, centrePoint, currentPoint, rightNeighbour, dCentrePoint, zeroVec, dRightNeighbour); // I2' * acos'(I2)
 //                     double dl1, dl2, dl3;
 //                     double dA = triangleAreaDeriv(vertexAngle1, vertexAngle2, dt1, dt2, leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dl1, dl2, dl3);
-                
+
 //                     // Mean derivative calculation
 //                     double dihedralAngle;
 //                     double dihedralDeriv;
 //                     dihedralAngleDeriv(leftNeighbour, centrePoint, rightNeighbour, currentPoint, dLeftNeighbour, dCentrePoint, dRightNeighbour, zeroVec, dihedralAngle, dihedralDeriv);
-                    
+
 //                     double dGauss = (focusedIndex) ? -(dt1+dt2)/area - dA * (gaussCurvature)/area : 0;
 //                     double dMean = (focusedIndex) ? 0.25 * (dl2 * dihedralAngle + edge2Length * dihedralDeriv)/area - dA*meanCurvature/area : 0.25 * edge2Length * dihedralDeriv/area;
 //                     double dStretch = (focusedIndex) ? m_parameters.strainCoeff * (area - m_origTriangleSizes[curveLoc]) * dA : 0;
-                    
+
 //                     double meanCurvatureDerivContribution = (meanCurvatureEnergy) ? m_parameters.meanStiffness * (meanCurvature - m_parameters.desiredCurvature) * dMean : 0;
 //                     double gaussCurvatureDerivContribution = (gaussCurvatureEnergy) ? - m_parameters.gaussStiffness * dGauss : 0;
 //                     double stretchDerivContribution =  (areaEnergy) ? m_parameters.strainCoeff * (dStretch) : 0;
@@ -404,20 +425,19 @@ double EnergyFunction::rescaleEnergyFunction(double current, double init, int ne
 //         }
 //     }
 
-
 // UNUSED FUNCTIONS STORED DOWN HERE
 
 // DIHEDRAL ANGLE DERIVATIVE FUNCTION
 
-void EnergyFunction::dihedralAngleDeriv(Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &d, Vector3d &da, Vector3d &db, Vector3d &dc, Vector3d &dd, double& angleResult, double& derivResult)
+void EnergyFunction::dihedralAngleDeriv(Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &d, Vector3d &da, Vector3d &db, Vector3d &dc, Vector3d &dd, double &angleResult, double &derivResult)
 {
     // Finds the dihedral angle derivative across the edge b-d, where d is the centre vertex and a,b,c are the points that make up the faces
-    Vector3d edge1 = a-d;
-    Vector3d edge2 = b-d;
-    Vector3d edge3 = c-d;
-    Vector3d dedge1 = da-dd;
-    Vector3d dedge2 = db-dd;
-    Vector3d dedge3 = dc-dd;
+    Vector3d edge1 = a - d;
+    Vector3d edge2 = b - d;
+    Vector3d edge3 = c - d;
+    Vector3d dedge1 = da - dd;
+    Vector3d dedge2 = db - dd;
+    Vector3d dedge3 = dc - dd;
     Vector3d edge2Norm = edge2.normalized();
     Vector3d dedge2Norm = normVecDeriv(edge2, dedge2);
     Vector3d unNormed1 = crossProd(edge1, edge2);
@@ -438,45 +458,48 @@ void EnergyFunction::dihedralAngleDeriv(Vector3d &a, Vector3d &b, Vector3d &c, V
     derivResult = atan2Deriv(atan1, atan2, datan1, datan2);
 }
 
-double EnergyFunction::triangleAreaDeriv(double insideAngle1, double insideAngle2, double dangle1, double dangle2 ,Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &d, Vector3d &da, Vector3d &db, Vector3d &dc, Vector3d &dd, double& dl1, double& dl2, double& dl3)
+double EnergyFunction::triangleAreaDeriv(double insideAngle1, double insideAngle2, double dangle1, double dangle2, Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &d, Vector3d &da, Vector3d &db, Vector3d &dc, Vector3d &dd, double &dl1, double &dl2, double &dl3)
 {
     // Takes the point and derivatives of the only contributing terms to the area of a triangle face
     // CurrentPoint is d, others are a,b,c
-    double l1 = (a-d).norm();
-    double l2 = (b-d).norm();
-    double l3 = (c-d).norm();
-    dl1 = normDiffDeriv(a,d,da,dd);
-    dl2 = normDiffDeriv(b,d,db,dd);
-    dl3 = normDiffDeriv(c,d,dc,dd);
-    double part1 = 0.125 * (l1 * l2 * dangle1 * insideAngle1 + (l1*dl2 + l2*dl1)*std::sqrt(1-std::pow(insideAngle1,2)));
-    double part2 = 0.125 * (l2 * l3 * dangle2 * insideAngle2 + (l2*dl3 + l3*dl2)*std::sqrt(1-std::pow(insideAngle2,2)));
+    double l1 = (a - d).norm();
+    double l2 = (b - d).norm();
+    double l3 = (c - d).norm();
+    dl1 = normDiffDeriv(a, d, da, dd);
+    dl2 = normDiffDeriv(b, d, db, dd);
+    dl3 = normDiffDeriv(c, d, dc, dd);
+    double part1 = 0.125 * (l1 * l2 * dangle1 * insideAngle1 + (l1 * dl2 + l2 * dl1) * std::sqrt(1 - std::pow(insideAngle1, 2)));
+    double part2 = 0.125 * (l2 * l3 * dangle2 * insideAngle2 + (l2 * dl3 + l3 * dl2) * std::sqrt(1 - std::pow(insideAngle2, 2)));
     return part1 + part2;
 }
 
 double EnergyFunction::angleDeriv(double insideAngle, Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &da, Vector3d &db, Vector3d &dc)
 {
     // Finds the derivative for the angle between the vectors (a-b) and (c-b)
-    
-    Vector3d normalVecDeriv1 = normalVecDiffDeriv(a,b,da,db);
-    Vector3d normalVecDeriv2 = normalVecDiffDeriv(c,b,dc,db);
-    Vector3d normalisedVec1 = (a-b).normalized();
-    Vector3d normalisedVec2 = (c-b).normalized();
+
+    Vector3d normalVecDeriv1 = normalVecDiffDeriv(a, b, da, db);
+    Vector3d normalVecDeriv2 = normalVecDiffDeriv(c, b, dc, db);
+    Vector3d normalisedVec1 = (a - b).normalized();
+    Vector3d normalisedVec2 = (c - b).normalized();
     double insideAngleDeriv = dotDeriv(normalisedVec1, normalisedVec2, normalVecDeriv1, normalVecDeriv2);
-    if (insideAngleDeriv > 1) {
+    if (insideAngleDeriv > 1)
+    {
         std::cout << "Division by 0!" << std::endl;
         insideAngleDeriv = 1;
         return 0;
-    } else if (insideAngleDeriv < -1) {
+    }
+    else if (insideAngleDeriv < -1)
+    {
         std::cout << "Division by 0!" << std::endl;
         insideAngleDeriv = -1;
         return 0;
     }
 
-    return insideAngleDeriv * (-1/std::sqrt(1-std::pow(insideAngle,2)));
+    return insideAngleDeriv * (-1 / std::sqrt(1 - std::pow(insideAngle, 2)));
 }
 
 double EnergyFunction::atan2Deriv(double x, double y, double dx, double dy)
 {
     // Returns the derivative of atan2(x,y)
-    return (x*dy - y*dx)/(std::pow(x,2) + std::pow(y,2));
+    return (x * dy - y * dx) / (std::pow(x, 2) + std::pow(y, 2));
 };
