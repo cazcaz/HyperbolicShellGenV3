@@ -10,7 +10,7 @@
 using Eigen::Vector3d;
 namespace fs = std::filesystem;
 
-ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius + m_parameters.extensionLength*0.2){
+ShellGen::ShellGen(ShellParams& parameters) : m_parameters(parameters) , m_initLength(parameters.extensionLength), m_radialDist(parameters.radius){
     ShellName namer;
     std::string fileName = namer.makeName(m_parameters);
     m_outputDirectory ="./Surfaces/" + fileName;
@@ -25,11 +25,7 @@ void ShellGen::setInitCurve() {
     std::vector<Vector3d> secondCurve;
     CircleGen circlemaker;
     circlemaker.makeCircle(m_parameters.radius, centre, m_parameters.resolution, initCurve);
-    int nextRingRes = lengthFunction(m_parameters.radius + m_initLength* 0.2, m_parameters.radius) * m_parameters.resolution / (2 * M_PI * m_parameters.radius);
-    circlemaker.makeCircle(m_parameters.radius + m_initLength * 0.2, centre, nextRingRes, secondCurve);
     m_surface.addCurve(initCurve);
-    m_surface.addCurve(secondCurve);
-    m_recordedExtensionLengths.push_back(m_parameters.extensionLength);
 }
 
 bool ShellGen::expandCurve() {
@@ -45,30 +41,42 @@ bool ShellGen::expandCurve() {
     int nextRingSize = int(lengthFunction(m_radialDist + m_parameters.extensionLength, initialDist) * m_parameters.resolution / (2 * M_PI * initialDist));
 
     double angleChange = 2 * M_PI / nextRingSize;
-    for (int i =0; i<nextRingSize;i++){
-            double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
-            Vector3d nextTangent = m_surface.getEdgeTangent(curveCount-1, pointParameter);
-            Vector3d nextNormal = m_surface.getEdgeNormal(curveCount-1, pointParameter);
+
+    // Keep to remove the need to have an initial expansion before the normal growth
+    //Should change nothing
+    for (int i = 0; i<nextRingSize;i++){
+        double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
+        Vector3d nextTangent, nextNormal;
+        if (curveCount == 1) {
+            nextTangent = Vector3d(-std::sin(pointParameter), std::cos(pointParameter),0);
+            nextNormal = Vector3d(0,0,1);
+        } else {
+            nextTangent = m_surface.getEdgeTangent(curveCount-1, pointParameter);
+            nextNormal = m_surface.getEdgeNormal(curveCount-1, pointParameter);
             if (nextNormal[2] == -1) {
                 nextNormal[2] = 1;
             }
-            tangents.push_back(nextTangent);
-            normals.push_back(nextNormal);
-    }
-    
-    if (curveCount == 1) {
-        for (Vector3d firstCurvePoint : m_surface.getCurve(1)){
-            binormals.push_back(firstCurvePoint.normalized());
         }
-    } else {
-        for (int i =0; i<nextRingSize;i++){
-            Vector3d nextBinormal(tangents[i][1]*normals[i][2] - tangents[i][2]*normals[i][1], tangents[i][2]*normals[i][0] - tangents[i][0]*normals[i][2], tangents[i][0]*normals[i][1] - tangents[i][1]*normals[i][0]);
-            nextBinormal.normalize();
-            binormals.push_back(nextBinormal);
-        }
+        tangents.push_back(nextTangent);
+        normals.push_back(nextNormal);
     }
-    //Nicely behaved tangents
+
+    // for (int i =0; i<nextRingSize;i++){
+    //         double pointParameter = 2 * M_PI * double(i)/double(nextRingSize);
+    //         Vector3d nextTangent = m_surface.getEdgeTangent(curveCount-1, pointParameter);
+    //         Vector3d nextNormal = m_surface.getEdgeNormal(curveCount-1, pointParameter);
+    //         if (nextNormal[2] == -1) {
+    //             nextNormal[2] = 1;
+    //         }
+    //         tangents.push_back(nextTangent);
+    //         normals.push_back(nextNormal);
+    // }
     
+    for (int i =0; i<nextRingSize;i++){
+        Vector3d nextBinormal(tangents[i][1]*normals[i][2] - tangents[i][2]*normals[i][1], tangents[i][2]*normals[i][0] - tangents[i][0]*normals[i][2], tangents[i][0]*normals[i][1] - tangents[i][1]*normals[i][0]);
+        nextBinormal.normalize();
+        binormals.push_back(nextBinormal);
+    }
 
     bool success = true;
 
@@ -85,7 +93,8 @@ bool ShellGen::expandCurve() {
     param.max_iterations = 200;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input = 0.5 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0 * VectorXd::Random(nextRingSize);
+    input[0] += 1;
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
     //     input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     // }
@@ -114,7 +123,7 @@ bool ShellGen::expandCurve() {
         }
     } catch(...) {
         std::cout << "Failed from error in calculation." << std::endl;
-        return false;
+        //return false;
     }
 
     std::vector<Vector3d> nextCurve;
