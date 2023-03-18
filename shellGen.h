@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Geometry>
 #include <string>
 #include "shellParams.h"
 #include "shellNaming.h"
@@ -9,29 +10,30 @@
 using Eigen::Vector3d;
 using Eigen::VectorXd;
 
-class ShellGen {
-    public:
-        ShellGen(ShellParams& parameters);
-        ~ShellGen();
+class ShellGen
+{
+public:
+    ShellGen(ShellParams &parameters);
+    ~ShellGen();
 
-        void setInitCurve();
+    void setInitCurve();
 
-        bool expandCurve();
+    bool expandCurve();
 
-        void expandCurveNTimes();
+    void expandCurveNTimes();
 
-        int correctIndex(int index);
+    int correctIndex(int index);
 
-        double lengthFunction(double t, double t0);
+    double lengthFunction(double t, double t0);
 
-        void printSurface();
+    void printSurface();
 
-    private:
-        struct ShellParams& m_parameters;
-        RadialSurface m_surface;
-        double m_initLength;
-        double m_radialDist;
-        std::string m_outputDirectory = "";
-        std::vector<double> m_recordedExtensionLengths;
-        std::vector<VectorXd> m_recordedInputs;
+private:
+    struct ShellParams &m_parameters;
+    RadialSurface m_surface;
+    double m_initLength;
+    double m_radialDist;
+    std::string m_outputDirectory = "";
+    std::vector<double> m_recordedExtensionLengths;
+    std::vector<VectorXd> m_recordedInputs;
 };

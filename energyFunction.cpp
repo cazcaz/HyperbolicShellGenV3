@@ -55,16 +55,19 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
 
     bool lengthEnergy = false;
     bool bendEnergy = true;
-    bool springEnergy = false;
+    bool springEnergy = true;
+    bool sharpBendPenalty = true;
 
     double totalEnergy = 0;
     double totalLength = 0;
     double totalBendingEnergy = 0;
     double totalSpringEnergy = 0;
+    double sharpBendEnergy = 0;
 
     VectorXd lengthDerivs(curveSize);
     VectorXd springDerivs(curveSize);
     VectorXd bendDerivs(curveSize);
+    VectorXd sharpBendPenaltyDerivs(curveSize);
 
     Vector3d prev2Vec, prevVec, currentVec, nextVec, next2Vec;
     prev2Vec = nextCurve[curveSize - 3];
@@ -106,9 +109,17 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
         lengthDerivs[outerCurveIndex] = (lengthEnergy) ? normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) : 0;
 
         // Spring Contributions
-        totalSpringEnergy += 0.5 * m_parameters.strainCoeff * std::pow(prevLength - springNaturalLength, 2);
-        springDerivs[outerCurveIndex] = (springEnergy) ? m_parameters.strainCoeff * (normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) * (prevLength - springNaturalLength) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) * ((nextVec - currentVec).norm() - springNaturalLength)) : 0;
+        totalSpringEnergy += 0.5 * m_parameters.springCoeff * std::pow(prevLength - springNaturalLength, 2);
+        springDerivs[outerCurveIndex] = (springEnergy) ? m_parameters.springCoeff * (normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) * (prevLength - springNaturalLength) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) * ((nextVec - currentVec).norm() - springNaturalLength)) : 0;
     }
+
+    for (int inputIndex = 0; inputIndex < inputs.size(); inputIndex++)
+    {
+        double boundValue = 2;
+        sharpBendEnergy += std::exp(100*(inputs[inputIndex]-boundValue)) + std::exp(-100*(inputs[inputIndex]+boundValue));
+        sharpBendPenaltyDerivs[inputIndex] = 100*(std::exp(100*(inputs[inputIndex]-boundValue)) - std::exp(-100*(inputs[inputIndex]+boundValue)));
+    }
+
     // Now we have the derivatives of the length at each vertex, we can multiply them by the coefficient depending on the total length to get the correct values
     double lengthDerivCoeff = m_parameters.lengthStiffness * (totalLength - lengthFunction(m_radialDist, m_parameters.radius));
     lengthDerivs *= lengthDerivCoeff;
@@ -127,11 +138,13 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
         derivatives += bendDerivs;
         totalEnergy += totalBendingEnergy;
     }
-
+    if (sharpBendPenalty)
+    {
+        derivatives += sharpBendPenaltyDerivs;
+        totalEnergy += sharpBendEnergy;
+    }
     // End of loop over the previous curve vertices
     m_firstRun = false;
-
-    derivatives *= rescaleTerm;
     return rescaleTerm * totalEnergy;
 };
 
@@ -238,11 +251,6 @@ double EnergyFunction::bendingEnergyDeriv(Vector3d a, Vector3d b, Vector3d c, Ve
     // d/dx 1/(l1+l2) tan^2((pi - std::acos(cosAngle))/2)
     double fullDeriv = ((std::pow(cosAngle, 2) - 1) * (dnorm1 + dnorm2) + 2 * (norm1 + norm2) * dCosAngle) / (std::pow((cosAngle - 1) * (norm1 + norm2), 2));
     return fullDeriv;
-};
-
-double EnergyFunction::rescaleEnergyFunction(double current, double init, int nextCurveLength)
-{
-    return 1 / (std::pow(nextCurveLength, 2));
 };
 
 // MEAN, GAUSSIAN AND AREA ENERGY CALCULATIONS, MOVED HERE TO AVOID CLUTTER IN FUNCTIONS AND NOT CURRENTLY USED

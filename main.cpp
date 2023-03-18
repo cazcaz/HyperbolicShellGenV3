@@ -8,27 +8,19 @@ int main(int, char **)
 {
     system("sudo ./cleanup.sh");
 
-    // // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
+    // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
 
     // std::vector<ShellParams> parameterList;
     // BatchGen massCalcer;
-    // double bendStiffChange = (10 - 0.1)/31;
-    // double lengthStiffChange = (10 - 0.1)/31;
-    // ShellParams parameters;
-    // parameters.centreX = 0;
-    // parameters.centreY = 0;
-    // parameters.centreZ = 0;
-    // parameters.desiredCurvature = -0.01;
-    // parameters.expansions = 23;
-    // parameters.extensionLength = 0.1;
+    // double DCChange = 0.2;
 
-    // for (int k=0; k < 31; k++){
-    //     for (int j=0; j < 31; j++)
-    //         parameterList.push_back(parameters);
-    //         parameters.bendingStiffness += bendStiffChange;
-    //         parameters.surfaceIndex += 1;
-    //     parameters.lengthStiffness += lengthStiffChange;
-    //     parameters.bendingStiffness = 0.1;
+    // for (int j = 0; j < 10; j++)
+    // {
+    //     ShellParams parameters;
+    //     parameters.expansions = 60;
+    //     parameters.desiredCurvature = -1 - double(j)*DCChange;
+    //     parameters.surfaceIndex = j;
+    //     parameterList.push_back(parameters);
     // }
 
     // // for (int j=0; j < 10; j++){
@@ -36,12 +28,12 @@ int main(int, char **)
     // //     parameters.period+=1;
     // // }
 
-    // //Push parameters to the parameterList
+    // // Push parameters to the parameterList
 
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 10;
+    parameters.expansions = 3;
     parameters.desiredCurvature = -1;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();

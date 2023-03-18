@@ -4,8 +4,10 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <random>
 #include "LBFGS.h"
 #include "energyFunction.h"
+#include "LineGraphOutputter.h"
 
 using Eigen::Vector3d;
 namespace fs = std::filesystem;
@@ -93,9 +95,10 @@ bool ShellGen::expandCurve()
     param.max_iterations = 200;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    VectorXd input = 0 * VectorXd::Random(nextRingSize);
+    std::srand((unsigned int) time(0));
+    VectorXd input = 0.01 * VectorXd::Random(nextRingSize);
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
-    //     input[ignore] += 0.05 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
+    //     //input[ignore] += 0.01 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     // }
 
     // Used to make a linear approx. of the derivative for testing
@@ -125,7 +128,7 @@ bool ShellGen::expandCurve()
     }
     catch (...)
     {
-        std::cout << "Failed from error in calculation." << std::endl;
+        std::cout << "Energy increased in minimisation, continuing." << std::endl;
         // return false;
     }
 
@@ -214,6 +217,12 @@ void ShellGen::printSurface()
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
     {
         std::ofstream curvatureFile(m_outputDirectory + "/curvature.txt");
+        curvatureFile << std::fixed << "Res: " << m_parameters.resolution << std::endl
+              << "Exp: " << m_parameters.expansions << std::endl
+              << "Len: " << m_parameters.extensionLength << std::endl
+              << "SC: " << m_parameters.springCoeff << std::endl
+              << "BS: " << m_parameters.bendingStiffness << std::endl
+              << "DC:" << m_parameters.desiredCurvature << std::endl << "?";
         int totalVertices = m_surface.surfaceSize();
         double currentMeanCurv;
         double currentGaussCurv;
@@ -240,28 +249,43 @@ void ShellGen::printSurface()
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
     {
         std::ofstream lengthFile(m_outputDirectory + "/lengthProfile.txt");
+        std::string fileName = "lengthProfile";
+        std::string plotTitle = "Curve Lengths";
+        std::string xAxisLabel = "Radius";
+        std::string yAxisLabel = "Length";
+        std::string currentValuesLegend = "Actual Radius Lengths";
+        std::string expValuesLegend = "Desired Radius Lengths";
         int totalCurves = m_surface.getCurveCount();
         double currentLength;
         double expectedLength;
+        std::vector<double> currentLengths;
+        std::vector<double> expectedLengths;
         double currentRadius = m_parameters.radius;
+        std::vector<double> radii;
         for (int i = 0; i < totalCurves; i++)
         {
-            currentLength = m_surface.getCurveLength(i);
-            expectedLength = lengthFunction(currentRadius, m_parameters.radius);
+            currentLengths.push_back(m_surface.getCurveLength(i));
+            expectedLengths.push_back(lengthFunction(currentRadius, m_parameters.radius));
+            radii.push_back(currentRadius);
             currentRadius += m_recordedExtensionLengths[i];
-            lengthFile << currentRadius << " " << currentLength << " " << expectedLength;
-            if (i != totalCurves - 1)
-            {
-                lengthFile << ":";
-            }
         }
-        lengthFile.close();
+        LineGraphOutputter lengthCurvePlotter(m_outputDirectory, fileName, plotTitle, xAxisLabel, yAxisLabel, m_parameters);
+        lengthCurvePlotter.addXValues(radii);
+        lengthCurvePlotter.addData(currentLengths, currentValuesLegend);
+        lengthCurvePlotter.addData(expectedLengths, expValuesLegend);
+        lengthCurvePlotter.writeData();
     }
 
     // Output inputs for input graph
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
     {
         std::ofstream displacementsFile(m_outputDirectory + "/displacements.txt");
+        displacementsFile << std::fixed << "Res: " << m_parameters.resolution << std::endl
+              << "Exp: " << m_parameters.expansions << std::endl
+              << "Len: " << m_parameters.extensionLength << std::endl
+              << "SC: " << m_parameters.springCoeff << std::endl
+              << "BS: " << m_parameters.bendingStiffness << std::endl
+              << "DC:" << m_parameters.desiredCurvature << std::endl << "?";
         for (int inputsIndex = 0; inputsIndex < m_recordedInputs.size(); inputsIndex++)
         {
             for (int inputIndex = 0; inputIndex < m_recordedInputs[inputsIndex].size(); inputIndex++)

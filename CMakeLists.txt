@@ -12,6 +12,7 @@ set(CMAKE_BUILD_TYPE Debug)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fno-omit-frame-pointer" )
 
 add_library(LibsModule
+     LineGraphOutputter.cpp
      circleGen.cpp
      shellGen.cpp
      energyFunction.cpp

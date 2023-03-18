@@ -14,14 +14,20 @@ for folder in os.listdir(searchPath):
     if os.path.isdir(fullInputPath):
         fileNames = []
         surfaces = []
+        parameters = []
         for filename in os.listdir(fullInputPath):
             if len(filename) >= 17:
                 if filename[-17:] == 'displacements.txt':
                     fileNames.append(filename[:-4])
                     with open(os.path.join(fullInputPath, filename), 'r') as f:
-                        curves=[]
                         currentFile = f.readlines()
-                        curveDispStrings = currentFile[0].split("|")
+                        paramterStringList = []
+                        for line in currentFile:
+                            if line[0] != "?":
+                                paramterStringList.append(line[:-1])
+                        parameters.append(paramterStringList)
+                        curves=[]
+                        curveDispStrings = currentFile[-1][1:].split("|")
                         for curveDispString in curveDispStrings:
                             IndDispString = curveDispString.split(",")
                             curve = []
@@ -32,7 +38,7 @@ for folder in os.listdir(searchPath):
 
         os.chdir(fullInputPath)
 
-        for surface, fileName in zip(surfaces, fileNames):
+        for parameterStrings, surface, fileName in zip(parameters, surfaces, fileNames):
             thetaInputs = []
             radiusInputs = []
             currentRadius = 1
@@ -69,13 +75,16 @@ for folder in os.listdir(searchPath):
             # displacements = np.clip(np.array(displacements), lower_bound, upper_bound)
             theta, r = np.mgrid[0:2*np.pi:len(surface[-1])*1j, min(radiusInputs):max(radiusInputs):len(surface) *1j]
             z = np.array(interpolatedDisplacements).T
-
             fig = plt.figure(figsize=(5,6))
             ax1 = fig.add_subplot(111, projection='polar')
             ax1.grid(False)
             ax1.set_rgrids([])
             ax1.set_thetagrids([])
             ax1.set_rorigin(0.5)
+            currentYTextCoord = 1.2
+            for parameter in parameterStrings:
+                fig.text(-0.25,currentYTextCoord, parameter, transform=ax1.transAxes, ha='left', va='top')
+                currentYTextCoord -= 0.05
             cmap = plt.cm.get_cmap('PiYG')
             sc1 = ax1.pcolormesh(theta, r, z, cmap=cmap)
             cbar1 = plt.colorbar(sc1, ax=ax1, orientation='horizontal')

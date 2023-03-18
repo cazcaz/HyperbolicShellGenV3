@@ -26,8 +26,6 @@ public:
     double lengthFunction(double t, double t0);
     double bendingEnergy(Vector3d a, Vector3d b, Vector3d c);
     double bendingEnergyDeriv(Vector3d a, Vector3d b, Vector3d c, Vector3d da, Vector3d db, Vector3d dc);
-    double rescaleEnergyFunction(double t, double t0, int nextCurveLength);
-
     // Currently unused functions kept out of the way to avoid clutter
     double atan2Deriv(double x, double y, double dx, double dy);
     double angleDeriv(double angle, Vector3d &a, Vector3d &b, Vector3d &c, Vector3d &da, Vector3d &db, Vector3d &dc);

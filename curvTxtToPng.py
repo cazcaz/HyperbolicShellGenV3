@@ -16,6 +16,7 @@ for folder in os.listdir(searchPath):
         #Each data will be two lists of the gaussian curvs and mean curvs
         datas = []
         surfaces = []
+        parameters = []
         for filename in os.listdir(fullInputPath):
             if len(filename) >= 13:
                 if filename[-13:] == 'curvature.txt':
@@ -24,7 +25,12 @@ for folder in os.listdir(searchPath):
                         data = [[],[]]
                         curves=[]
                         currentFile = f.readlines()
-                        curveCurvaturesStrings = currentFile[0].split("|")
+                        paramterStringList = []
+                        for line in currentFile:
+                            if line[0] != "?":
+                                paramterStringList.append(line[:-1])
+                        parameters.append(paramterStringList)
+                        curveCurvaturesStrings = currentFile[-1][1:].split("|")
                         for curveCurvatureString in curveCurvaturesStrings:
                             curvePairStrings = curveCurvatureString.split(":")
                             curve = []
@@ -42,7 +48,7 @@ for folder in os.listdir(searchPath):
 
         os.chdir(fullInputPath)
 
-        for surface, fileName in zip(surfaces, fileNames):
+        for parameterStrings, surface, fileName in zip(parameters, surfaces, fileNames):
             thetaInputs = []
             radiusInputs = []
             currentRadius = 1
@@ -102,6 +108,7 @@ for folder in os.listdir(searchPath):
             
 
             fig = plt.figure(figsize=(10,6))
+            
             ax1 = fig.add_subplot(121, projection='polar')
             ax2 = fig.add_subplot(122, projection='polar')
             ax1.grid(False)
@@ -112,6 +119,10 @@ for folder in os.listdir(searchPath):
             ax2.set_rgrids([])
             ax2.set_thetagrids([])
             ax2.set_rorigin(0.5)
+            currentYTextCoord = 1.2
+            for parameter in parameterStrings:
+                fig.text(-0.25,currentYTextCoord, parameter, transform=ax1.transAxes, ha='left', va='top')
+                currentYTextCoord -= 0.05
             cmap = plt.cm.get_cmap('bwr')
             sc1 = ax1.pcolormesh(theta, r, gaussColours, cmap=cmap)
             sc2 = ax2.pcolormesh(theta, r, meanColours, cmap=cmap)
@@ -150,7 +161,7 @@ for folder in os.listdir(searchPath):
             axs[1].text(0.95,0.85, 'IQRU:' + str(round(q2s2,4)), transform=axs[1].transAxes, ha='right', va='top')
 
             fig.savefig(os.path.join(fullInputPath, fileName + '.png'))
-            os.remove(fileName + '.txt')
+            #os.remove(fileName + '.txt')
             count+= 1
         os.chdir(current)
 
