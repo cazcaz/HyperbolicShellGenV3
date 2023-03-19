@@ -1,11 +1,11 @@
 #include "LineGraphOutputter.h"
 
-LineGraphOutputter::LineGraphOutputter(std::string& outputDirectory,
-                                       std::string &fileName,
-                                       std::string& plotTitle,
-                                       std::string &xLabel,
-                                       std::string &yLabel,
-                                       ShellParams &parameters) : m_outputDirectory(outputDirectory),
+LineGraphOutputter::LineGraphOutputter(std::string outputDirectory,
+                                       std::string fileName,
+                                       std::string plotTitle,
+                                       std::string xLabel,
+                                       std::string yLabel,
+                                       ShellParams parameters) : m_outputDirectory(outputDirectory),
                                                                   m_fileName(fileName),
                                                                   m_plotTitle(plotTitle),
                                                                   m_xLabel(xLabel),
@@ -21,7 +21,7 @@ void LineGraphOutputter::addXValues(std::vector<double> &xValues)
     m_XValues = xValues;
 }
 
-void LineGraphOutputter::addData(std::vector<double> &yValues, std::string& legend)
+void LineGraphOutputter::addData(std::vector<double> &yValues, std::string legend)
 {
 
     m_data.push_back(yValues);

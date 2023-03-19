@@ -8,6 +8,7 @@
 #include "LBFGS.h"
 #include "energyFunction.h"
 #include "LineGraphOutputter.h"
+#include "PolarGraphOutputter.h"
 
 using Eigen::Vector3d;
 namespace fs = std::filesystem;
@@ -95,7 +96,7 @@ bool ShellGen::expandCurve()
     param.max_iterations = 200;
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
-    std::srand((unsigned int) time(0));
+    std::srand((unsigned int)time(0));
     VectorXd input = 0.01 * VectorXd::Random(nextRingSize);
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
     //     //input[ignore] += 0.01 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
@@ -213,55 +214,16 @@ void ShellGen::printSurface()
     surfaceFile << m_surface;
     surfaceFile.close();
 
-    // Calculate curvatures of every point to output to m_curvatureDirectory
-    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
-    {
-        std::ofstream curvatureFile(m_outputDirectory + "/curvature.txt");
-        curvatureFile << std::fixed << "Res: " << m_parameters.resolution << std::endl
-              << "Exp: " << m_parameters.expansions << std::endl
-              << "Len: " << m_parameters.extensionLength << std::endl
-              << "SC: " << m_parameters.springCoeff << std::endl
-              << "BS: " << m_parameters.bendingStiffness << std::endl
-              << "DC:" << m_parameters.desiredCurvature << std::endl << "?";
-        int totalVertices = m_surface.surfaceSize();
-        double currentMeanCurv;
-        double currentGaussCurv;
-        for (int currentCurve = 2; currentCurve < m_surface.getCurveCount(); currentCurve++)
-        {
-            for (int i = m_surface.curveStartIndex(currentCurve - 1); i < m_surface.curveStartIndex(currentCurve); i++)
-            {
-                m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
-                curvatureFile << currentGaussCurv << " " << currentMeanCurv;
-                if (i != m_surface.curveStartIndex(currentCurve) - 1)
-                {
-                    curvatureFile << ":";
-                }
-            }
-            if (currentCurve != m_surface.getCurveCount() - 1)
-            {
-                curvatureFile << "|";
-            }
-        }
-        curvatureFile.close();
-    }
-
+    std::vector<double> radii;
     // Calculate the lengths of each ring and output it to a length file with the desired length
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
     {
-        std::ofstream lengthFile(m_outputDirectory + "/lengthProfile.txt");
-        std::string fileName = "lengthProfile";
-        std::string plotTitle = "Curve Lengths";
-        std::string xAxisLabel = "Radius";
-        std::string yAxisLabel = "Length";
-        std::string currentValuesLegend = "Actual Radius Lengths";
-        std::string expValuesLegend = "Desired Radius Lengths";
         int totalCurves = m_surface.getCurveCount();
         double currentLength;
         double expectedLength;
         std::vector<double> currentLengths;
         std::vector<double> expectedLengths;
         double currentRadius = m_parameters.radius;
-        std::vector<double> radii;
         for (int i = 0; i < totalCurves; i++)
         {
             currentLengths.push_back(m_surface.getCurveLength(i));
@@ -269,39 +231,71 @@ void ShellGen::printSurface()
             radii.push_back(currentRadius);
             currentRadius += m_recordedExtensionLengths[i];
         }
-        LineGraphOutputter lengthCurvePlotter(m_outputDirectory, fileName, plotTitle, xAxisLabel, yAxisLabel, m_parameters);
+        LineGraphOutputter lengthCurvePlotter(m_outputDirectory, "lengthProfile", "Curve Lengths", "Radius", "Length", m_parameters);
         lengthCurvePlotter.addXValues(radii);
-        lengthCurvePlotter.addData(currentLengths, currentValuesLegend);
-        lengthCurvePlotter.addData(expectedLengths, expValuesLegend);
+        lengthCurvePlotter.addData(currentLengths, "Actual Radius Lengths");
+        lengthCurvePlotter.addData(expectedLengths, "Desired Radius Lengths");
         lengthCurvePlotter.writeData();
+    }
+    std::vector<double> clippedRadii;
+    if (radii.size() > 2){
+        for (int radiusIndex = 1; radiusIndex < radii.size() - 1; radiusIndex++) {
+            clippedRadii.push_back(radii[radiusIndex]);
+        }
+    }
+    // Calculate curvatures of every point to output to m_curvatureDirectory
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
+    {
+        int totalVertices = m_surface.surfaceSize();
+        double currentMeanCurv;
+        double currentGaussCurv;
+        std::vector<std::vector<double>> meanCurvatures;
+        std::vector<std::vector<double>> gaussCurvatures;
+        for (int currentCurve = 2; currentCurve < m_surface.getCurveCount(); currentCurve++)
+        {
+            std::vector<double> currentMeanCurvs;
+            std::vector<double> currentGaussCurvs;
+            for (int i = m_surface.curveStartIndex(currentCurve - 1); i < m_surface.curveStartIndex(currentCurve); i++)
+            {
+                m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
+                currentMeanCurvs.push_back(currentMeanCurv);
+                currentGaussCurvs.push_back(currentGaussCurv);
+            }
+            meanCurvatures.push_back(currentMeanCurvs);
+            gaussCurvatures.push_back(currentGaussCurvs);
+        }
+        PolarGraphOutputter gaussCurvPlotter(m_outputDirectory, "GaussCurveGraph", "Gaussian Curvature", "Discrete Gaussian Curvatures", "bwr", m_parameters);
+        gaussCurvPlotter.addRValues(clippedRadii);
+        gaussCurvPlotter.addData(gaussCurvatures);
+        gaussCurvPlotter.writeData();
+
+        PolarGraphOutputter meanCurvPlotter(m_outputDirectory, "MeanCurveGraph", "Mean Curvature", "Discrete Mean Curvatures", "bwr", m_parameters);
+        meanCurvPlotter.addRValues(clippedRadii);
+        meanCurvPlotter.addData(meanCurvatures);
+        meanCurvPlotter.writeData();
     }
 
     // Output inputs for input graph
+    std::vector<double> clippedRadii2;
+    if (radii.size() > 2){
+        for (int radiusIndex = 1; radiusIndex < radii.size(); radiusIndex++) {
+            clippedRadii2.push_back(radii[radiusIndex]);
+        }
+    }
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
     {
-        std::ofstream displacementsFile(m_outputDirectory + "/displacements.txt");
-        displacementsFile << std::fixed << "Res: " << m_parameters.resolution << std::endl
-              << "Exp: " << m_parameters.expansions << std::endl
-              << "Len: " << m_parameters.extensionLength << std::endl
-              << "SC: " << m_parameters.springCoeff << std::endl
-              << "BS: " << m_parameters.bendingStiffness << std::endl
-              << "DC:" << m_parameters.desiredCurvature << std::endl << "?";
-        for (int inputsIndex = 0; inputsIndex < m_recordedInputs.size(); inputsIndex++)
-        {
-            for (int inputIndex = 0; inputIndex < m_recordedInputs[inputsIndex].size(); inputIndex++)
-            {
-                displacementsFile << std::fixed << m_recordedInputs[inputsIndex][inputIndex];
-                if (inputIndex != m_recordedInputs[inputsIndex].size() - 1)
-                {
-                    displacementsFile << ",";
-                }
+        std::vector<std::vector<double>> inputs;
+        for (VectorXd inputVector : m_recordedInputs){
+            std::vector<double> curveInputs;
+            for (int vectorIndex=0;vectorIndex < inputVector.size(); vectorIndex++){
+                curveInputs.push_back(inputVector[vectorIndex]);
             }
-            if (inputsIndex != m_recordedInputs.size() - 1)
-            {
-                displacementsFile << "|";
-            }
+            inputs.push_back(curveInputs);
         }
-        displacementsFile.close();
+        PolarGraphOutputter inputPlotter(m_outputDirectory, "DisplacementGraph", "Input Values", "$\\mathbf{x}_i^k$", "PiYG", m_parameters, false);
+        inputPlotter.addRValues(clippedRadii2);
+        inputPlotter.addData(inputs);
+        inputPlotter.writeData();
     }
 }
 

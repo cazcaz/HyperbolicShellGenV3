@@ -10,10 +10,10 @@
 class LineGraphOutputter
 {
 public:
-    LineGraphOutputter(std::string& outputDirectory, std::string &fileName, std::string& plotTitle,std::string &xLabel, std::string &yLabel, ShellParams &parameters);
+    LineGraphOutputter(std::string outputDirectory, std::string fileName, std::string plotTitle,std::string xLabel, std::string yLabel, ShellParams parameters);
     ~LineGraphOutputter();
     void addXValues(std::vector<double>& xValues);
-    void addData(std::vector<double>& yValues, std::string& legend);
+    void addData(std::vector<double>& yValues, std::string legend);
     void writeData();
 private:
     std::string m_outputDirectory;

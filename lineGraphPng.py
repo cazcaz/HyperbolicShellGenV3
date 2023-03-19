@@ -13,11 +13,10 @@ for folder in os.listdir(searchPath):
         datas = []
         parameters = []
         for filename in os.listdir(fullInputPath):
-            if len(filename) >= 17:
-                if filename[-17:] == 'lengthProfile.txt':
-                    fileNames.append(filename[:-4])
+            if len(filename) >= 12:
+                if filename[-12:] == 'linePlot.txt':
+                    fileNames.append(filename[:-12])
                     with open(os.path.join(fullInputPath, filename), 'r') as f:
-                        data = [[],[],[]]
                         currentFile = f.readlines()
                         paramterStringList = []
                         for line in currentFile:
@@ -25,31 +24,33 @@ for folder in os.listdir(searchPath):
                                 paramterStringList.append(line[:-1])
                         parameters.append(paramterStringList)
                         curvaturePairs = currentFile[-1][1:].split(":")
+                        data = [[] for _ in range(len(curvaturePairs[0].split(" ")[0]))]
                         for pair in curvaturePairs:
                             currentValues = pair.split(" ")
-                            data[0].append(float(currentValues[0]))
-                            data[1].append(float(currentValues[1]))
-                            data[2].append(float(currentValues[2]))
+                            for dataIndex in range(len(currentValues)):
+                                data[dataIndex].append(float(currentValues[dataIndex]))
                         datas.append(data)
         os.chdir(fullInputPath)
         for parameterStrings, data, fileName in zip(parameters, datas, fileNames):
             xvalues = np.array(data[0])
-            curveRealLengths = np.array(data[1])
-            curveDesiredLengths = np.array(data[2])
+            yvalues = [np.array(ydata) for ydata in data[1:]]
 
             fig, ax = plt.subplots()
+            ax.set_title(parameterStrings[0])
+            axisLabels = parameterStrings[1].split("~")
+            ax.set_ylabel(axisLabels[1])
+            ax.set_xlabel(axisLabels[0])
             currentYTextCoord = 1.15
-            for parameter in parameterStrings:
+            for parameter in parameterStrings[3:]:
                 fig.text(-0.15,currentYTextCoord, parameter, transform=ax.transAxes, ha='left', va='top',  fontsize=8)
                 currentYTextCoord -= 0.025
-            ax.plot(xvalues,curveRealLengths, label = "Actual Radius Lengths")
-            ax.plot(xvalues,curveDesiredLengths, '--', label = "Desired Radius Lengths")
-            ax.set_title('Curve Lengths')
-            ax.set_ylabel('Length')
-            ax.set_xlabel('Radius')
+            legends = parameterStrings[2].split("~")
+            for yvalueset, legend in zip(yvalues, legends):
+                ax.plot(xvalues,yvalueset, label = legend)
+
             ax.legend(loc='upper left')
             fig.savefig(os.path.join(fullInputPath, fileName + '.png'))
-            #os.remove(fileName + '.txt')
+            os.remove(fileName + 'linePlot.txt')
             count+= 1
         os.chdir(current)
 

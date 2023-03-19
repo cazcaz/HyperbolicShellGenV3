@@ -33,8 +33,8 @@ int main(int, char **)
     // massCalcer.calculateAll(parameterList);
 
     ShellParams parameters;
-    parameters.expansions = 3;
-    parameters.desiredCurvature = -1;
+    parameters.expansions = 30;
+    parameters.desiredCurvature = -1.5;
     ShellGen shellGenerator(parameters);
     shellGenerator.setInitCurve();
     shellGenerator.expandCurveNTimes();
@@ -42,11 +42,9 @@ int main(int, char **)
 
     std::cout << "Surface generation complete, converting to .stl" << std::endl;
     system("sudo python3 txtToStl.py");
-    std::cout << "Generating curvature .png s" << std::endl;
-    system("sudo python3 curvTxtToPng.py");
-    std::cout << "Generating length profile .png s" << std::endl;
-    system("sudo python3 lengthTxtToPng.py");
-    std::cout << "Generating displacement profile .png s" << std::endl;
-    system("sudo python3 dispToPng.py");
+    std::cout << "Generating polar graph .png s" << std::endl;
+    system("sudo python3 polarGraph.py");
+    std::cout << "Generating line graphs .png s" << std::endl;
+    system("sudo python3 lineGraphPng.py");
     return 0;
 }
