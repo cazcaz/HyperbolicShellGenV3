@@ -58,8 +58,6 @@ for folder in os.listdir(searchPath):
                     currentPolarData.append(data)
                     allPolarData.append(data)
                 polarData.append(currentPolarData)
-            
-            
 
             longestLength = len(polarData[-1])
             interpolatedPolarDatas = []
@@ -68,6 +66,7 @@ for folder in os.listdir(searchPath):
                 newThetas = np.linspace(0, 2*np.pi, longestLength)
                 interpolationFunction = interp1d(thetas, np.array(polarDataList), kind = 'cubic')
                 interpolatedPolarData = interpolationFunction(newThetas)
+                print(np.mean(interpolatedPolarData))
                 interpolatedPolarDatas.append(interpolatedPolarData)
 
             if parameterStrings[3] == "1":
@@ -78,14 +77,16 @@ for folder in os.listdir(searchPath):
                 lower_bound = q1 - threshold*iqr
                 interpolatedPolarDatas = np.clip(np.array(interpolatedPolarDatas), lower_bound, upper_bound)
             
-            theta, r = np.mgrid[0:2*np.pi:len(surface[-1])*1j, min(radiusData):max(radiusData):len(surface) *1j]
-            z = np.array(interpolatedPolarDatas).T
+            thetaValuesFinal = np.linspace(0, 2*np.pi, len(surface[-1]), endpoint = False)
+            theta, r = np.meshgrid(thetaValuesFinal, radiusData)
+            z = np.array(interpolatedPolarDatas)
+            print(parameterStrings, np.mean(z))
             fig = plt.figure(figsize=(5,6))
             ax1 = fig.add_subplot(111, projection='polar')
             ax1.grid(False)
             ax1.set_rgrids([])
             ax1.set_thetagrids([])
-            ax1.set_rorigin(0.5)
+            ax1.set_rorigin(radiusData[0])
             currentYTextCoord = 1.2
             for parameter in parameterStrings[4:]:
                 fig.text(-0.25,currentYTextCoord, parameter, transform=ax1.transAxes, ha='left', va='top')

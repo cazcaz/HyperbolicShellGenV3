@@ -56,7 +56,7 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
     bool lengthEnergy = false;
     bool bendEnergy = true;
     bool springEnergy = true;
-    bool sharpBendPenalty = true;
+    bool sharpBendPenalty = false;
 
     double totalEnergy = 0;
     double totalLength = 0;
@@ -75,7 +75,7 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
     currentVec = nextCurve[curveSize - 1];
     nextVec = nextCurve[0];
     next2Vec = nextCurve[1];
-    double rescaleTerm = 1; // rescaleEnergyFunction(m_radialDist, m_parameters.radius, nextCurveLength);
+    double rescaleTerm = 1;///double(curveSize); // rescaleEnergyFunction(m_radialDist, m_parameters.radius, nextCurveLength);
     // Loop over every vertex of the new curve to find the length of the next curve
     // Also calculate the derivatives for the lengths and adds them
 
@@ -115,9 +115,9 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
 
     for (int inputIndex = 0; inputIndex < inputs.size(); inputIndex++)
     {
-        double boundValue = 2;
-        sharpBendEnergy += std::exp(100*(inputs[inputIndex]-boundValue)) + std::exp(-100*(inputs[inputIndex]+boundValue));
-        sharpBendPenaltyDerivs[inputIndex] = 100*(std::exp(100*(inputs[inputIndex]-boundValue)) - std::exp(-100*(inputs[inputIndex]+boundValue)));
+        double boundValue = 5;
+        sharpBendEnergy += m_parameters.sharpBend * std::exp(100*(inputs[inputIndex]-boundValue)) + std::exp(-100*(inputs[inputIndex]+boundValue));
+        sharpBendPenaltyDerivs[inputIndex] = m_parameters.sharpBend * 100*(std::exp(100*(inputs[inputIndex]-boundValue)) - std::exp(-100*(inputs[inputIndex]+boundValue)));
     }
 
     // Now we have the derivatives of the length at each vertex, we can multiply them by the coefficient depending on the total length to get the correct values
@@ -145,6 +145,7 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
     }
     // End of loop over the previous curve vertices
     m_firstRun = false;
+    derivatives *= rescaleTerm;
     return rescaleTerm * totalEnergy;
 };
 

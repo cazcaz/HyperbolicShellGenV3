@@ -36,4 +36,5 @@ private:
     std::string m_outputDirectory = "";
     std::vector<double> m_recordedExtensionLengths;
     std::vector<VectorXd> m_recordedInputs;
+    std::vector<double> m_recordedEnergies;
 };

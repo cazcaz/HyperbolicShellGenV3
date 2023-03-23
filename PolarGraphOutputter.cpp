@@ -1,4 +1,5 @@
 #include "PolarGraphOutputter.h"
+#include <cmath>
 
 PolarGraphOutputter::PolarGraphOutputter(std::string outputDirectory,
                                          std::string fileName,
@@ -7,12 +8,12 @@ PolarGraphOutputter::PolarGraphOutputter(std::string outputDirectory,
                                          std::string cmap,
                                          ShellParams parameters,
                                          bool clipData) : m_outputDirectory(outputDirectory),
-                                                                 m_fileName(fileName),
-                                                                 m_plotTitle(plotTitle),
-                                                                 m_colourbarLabel(colourbarLabel),
-                                                                 m_cmap(cmap),
-                                                                 m_parameters(parameters),
-                                                                 m_clipData(clipData)
+                                                          m_fileName(fileName),
+                                                          m_plotTitle(plotTitle),
+                                                          m_colourbarLabel(colourbarLabel),
+                                                          m_cmap(cmap),
+                                                          m_parameters(parameters),
+                                                          m_clipData(clipData)
 {
 }
 
@@ -36,11 +37,11 @@ void PolarGraphOutputter::writeData()
                   << m_cmap << std::endl
                   << m_clipData << std::endl;
     polarPlotFile << std::fixed << "Res: " << m_parameters.resolution << std::endl
+                  << "Res: " << m_parameters.resolution << std::endl
                   << "Exp: " << m_parameters.expansions << std::endl
-                  << "Len: " << m_parameters.extensionLength << std::endl
-                  << "SC: " << m_parameters.springCoeff << std::endl
-                  << "BS: " << m_parameters.bendingStiffness << std::endl
-                  << "DC:" << m_parameters.desiredCurvature << std::endl
+                  << "Len: " << m_parameters.extensionLength / m_parameters.resolution << std::endl
+                  << "BS: " << m_parameters.bendingStiffness / (m_parameters.springCoeff * std::pow(m_parameters.radius, 3)) << std::endl
+                  << "DC:" << m_parameters.desiredCurvature / std::pow(m_parameters.radius, 2) << std::endl
                   << "?";
     for (int rIndex = 0; rIndex < m_RValues.size(); rIndex++)
     {

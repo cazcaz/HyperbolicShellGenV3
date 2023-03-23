@@ -97,7 +97,8 @@ bool ShellGen::expandCurve()
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
     std::srand((unsigned int)time(0));
-    VectorXd input = 0.01 * VectorXd::Random(nextRingSize);
+    VectorXd input = 0.001* VectorXd::Random(nextRingSize);
+    VectorXd derivatives = VectorXd::Zero(nextRingSize);
     // for (int ignore = 0; ignore < nextRingSize; ignore++) {
     //     //input[ignore] += 0.01 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
     // }
@@ -106,7 +107,6 @@ bool ShellGen::expandCurve()
     // VectorXd inputChanged = input;
     // double h = 0.00000001;
     // inputChanged[10] += h;
-    // VectorXd derivatives = VectorXd::Zero(nextRingSize);
     // double energy2;
     // energy2 = energyFunctional(inputChanged, derivatives);
     // energy = energyFunctional(input, derivatives);
@@ -153,6 +153,7 @@ bool ShellGen::expandCurve()
         m_radialDist += m_parameters.extensionLength;
     }
     m_recordedInputs.push_back(input);
+    m_recordedEnergies.push_back(energyFunctional(input, derivatives)/nextRingSize);
     return true;
 }
 
@@ -172,10 +173,6 @@ void ShellGen::expandCurveNTimes()
     {
         for (int iteration = 0; iteration < m_parameters.expansions; iteration++)
         {
-            // std::cout << iteration << std::endl;
-            // if (iteration % 10) {
-            //     printSurface();
-            // }
             if (!expandCurve())
             {
                 m_parameters.expansions = iteration;
@@ -226,20 +223,24 @@ void ShellGen::printSurface()
         double currentRadius = m_parameters.radius;
         for (int i = 0; i < totalCurves; i++)
         {
-            currentLengths.push_back(m_surface.getCurveLength(i));
-            expectedLengths.push_back(lengthFunction(currentRadius, m_parameters.radius));
-            radii.push_back(currentRadius);
+            currentLengths.push_back(m_surface.getCurveLength(i) / m_parameters.radius);
+            expectedLengths.push_back(lengthFunction(currentRadius, m_parameters.radius) / m_parameters.radius);
+            radii.push_back(currentRadius / m_parameters.radius);
             currentRadius += m_recordedExtensionLengths[i];
         }
-        LineGraphOutputter lengthCurvePlotter(m_outputDirectory, "lengthProfile", "Curve Lengths", "Radius", "Length", m_parameters);
+        LineGraphOutputter lengthCurvePlotter(m_outputDirectory, "lengthProfile", "Curve Lengths", "$\\tilde{R}^k$", "Length (Dimensionless)", m_parameters);
         lengthCurvePlotter.addXValues(radii);
         lengthCurvePlotter.addData(currentLengths, "Actual Radius Lengths");
         lengthCurvePlotter.addData(expectedLengths, "Desired Radius Lengths");
         lengthCurvePlotter.writeData();
     }
+
+    
     std::vector<double> clippedRadii;
-    if (radii.size() > 2){
-        for (int radiusIndex = 1; radiusIndex < radii.size() - 1; radiusIndex++) {
+    if (radii.size() > 2)
+    {
+        for (int radiusIndex = 1; radiusIndex < radii.size() - 1; radiusIndex++)
+        {
             clippedRadii.push_back(radii[radiusIndex]);
         }
     }
@@ -258,18 +259,18 @@ void ShellGen::printSurface()
             for (int i = m_surface.curveStartIndex(currentCurve - 1); i < m_surface.curveStartIndex(currentCurve); i++)
             {
                 m_surface.curvatures(i, currentGaussCurv, currentMeanCurv);
-                currentMeanCurvs.push_back(currentMeanCurv);
-                currentGaussCurvs.push_back(currentGaussCurv);
+                currentMeanCurvs.push_back(currentMeanCurv * m_parameters.radius);
+                currentGaussCurvs.push_back(currentGaussCurv * std::pow(m_parameters.radius,2));
             }
             meanCurvatures.push_back(currentMeanCurvs);
             gaussCurvatures.push_back(currentGaussCurvs);
         }
-        PolarGraphOutputter gaussCurvPlotter(m_outputDirectory, "GaussCurveGraph", "Gaussian Curvature", "Discrete Gaussian Curvatures", "bwr", m_parameters);
+        PolarGraphOutputter gaussCurvPlotter(m_outputDirectory, "GaussCurveGraph", "Gaussian Curvature", "$\\tilde{K}$", "bwr", m_parameters);
         gaussCurvPlotter.addRValues(clippedRadii);
         gaussCurvPlotter.addData(gaussCurvatures);
         gaussCurvPlotter.writeData();
 
-        PolarGraphOutputter meanCurvPlotter(m_outputDirectory, "MeanCurveGraph", "Mean Curvature", "Discrete Mean Curvatures", "bwr", m_parameters);
+        PolarGraphOutputter meanCurvPlotter(m_outputDirectory, "MeanCurveGraph", "Mean Curvature", "$\\tilde{M}$", "bwr", m_parameters);
         meanCurvPlotter.addRValues(clippedRadii);
         meanCurvPlotter.addData(meanCurvatures);
         meanCurvPlotter.writeData();
@@ -277,26 +278,40 @@ void ShellGen::printSurface()
 
     // Output inputs for input graph
     std::vector<double> clippedRadii2;
-    if (radii.size() > 2){
-        for (int radiusIndex = 1; radiusIndex < radii.size(); radiusIndex++) {
+    if (radii.size() > 2)
+    {
+        for (int radiusIndex = 1; radiusIndex < radii.size(); radiusIndex++)
+        {
             clippedRadii2.push_back(radii[radiusIndex]);
         }
     }
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
     {
         std::vector<std::vector<double>> inputs;
-        for (VectorXd inputVector : m_recordedInputs){
+        for (VectorXd inputVector : m_recordedInputs)
+        {
             std::vector<double> curveInputs;
-            for (int vectorIndex=0;vectorIndex < inputVector.size(); vectorIndex++){
-                curveInputs.push_back(inputVector[vectorIndex]);
+            for (int vectorIndex = 0; vectorIndex < inputVector.size(); vectorIndex++)
+            {
+                curveInputs.push_back(inputVector[vectorIndex] / m_parameters.radius);
             }
             inputs.push_back(curveInputs);
         }
-        PolarGraphOutputter inputPlotter(m_outputDirectory, "DisplacementGraph", "Input Values", "$\\mathbf{x}_i^k$", "PiYG", m_parameters, false);
+        PolarGraphOutputter inputPlotter(m_outputDirectory, "DisplacementGraph", "Input Values", "$\\tilde{\\mathbf{x}}_i^k$", "PiYG", m_parameters);
         inputPlotter.addRValues(clippedRadii2);
         inputPlotter.addData(inputs);
         inputPlotter.writeData();
     }
+
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
+    {
+        int totalCurves = m_surface.getCurveCount();
+        LineGraphOutputter lengthCurvePlotter(m_outputDirectory, "energyProfile", "Ring Energies", "$\\tilde{R}^k$", "$\\frac{\\tilde{E}^k}{n^k}$", m_parameters);
+        lengthCurvePlotter.addXValues(clippedRadii2);
+        lengthCurvePlotter.addData(m_recordedEnergies, "Energy");
+        lengthCurvePlotter.writeData();
+    }
+
 }
 
 double ShellGen::lengthFunction(double t, double t0)

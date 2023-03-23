@@ -1,4 +1,5 @@
 #include "LineGraphOutputter.h"
+#include <cmath>
 
 LineGraphOutputter::LineGraphOutputter(std::string outputDirectory,
                                        std::string fileName,
@@ -41,12 +42,12 @@ void LineGraphOutputter::writeData()
             linePlotFile << std::endl;
         }
     }
-    linePlotFile << std::fixed << "Res: " << m_parameters.resolution << std::endl
+    linePlotFile << std::fixed << m_parameters.surfaceIndex << std::endl
+              << "Res: " << m_parameters.resolution << std::endl
               << "Exp: " << m_parameters.expansions << std::endl
-              << "Len: " << m_parameters.extensionLength << std::endl
-              << "SC: " << m_parameters.springCoeff << std::endl
-              << "BS: " << m_parameters.bendingStiffness << std::endl
-              << "DC:" << m_parameters.desiredCurvature << std::endl << "?";
+              << "Len: " << m_parameters.extensionLength / m_parameters.resolution << std::endl
+              << "BS: " << m_parameters.bendingStiffness / (m_parameters.springCoeff * std::pow(m_parameters.radius,3)) << std::endl
+              << "DC:" << m_parameters.desiredCurvature / std::pow(m_parameters.radius,2) << std::endl << "?";
     for (int dataPointIndex = 0; dataPointIndex < m_XValues.size(); dataPointIndex++){
         linePlotFile << m_XValues[dataPointIndex] << " ";
         for (int dataIndex = 0; dataIndex < m_data.size(); dataIndex++) {

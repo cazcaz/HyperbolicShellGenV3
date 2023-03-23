@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 current = os.getcwd()
 searchPath = os.path.join(current, "Surfaces")
 count = 0
+persistData = []
 for folder in os.listdir(searchPath):
     fullInputPath = os.path.join(searchPath, folder)
     if os.path.isdir(fullInputPath):
@@ -34,14 +35,15 @@ for folder in os.listdir(searchPath):
         for parameterStrings, data, fileName in zip(parameters, datas, fileNames):
             xvalues = np.array(data[0])
             yvalues = [np.array(ydata) for ydata in data[1:]]
-
+            if fileName == "energyProfile":
+                persistData.append([parameterStrings[3], xvalues, yvalues[0]])
             fig, ax = plt.subplots()
             ax.set_title(parameterStrings[0])
             axisLabels = parameterStrings[1].split("~")
             ax.set_ylabel(axisLabels[1])
             ax.set_xlabel(axisLabels[0])
             currentYTextCoord = 1.15
-            for parameter in parameterStrings[3:]:
+            for parameter in parameterStrings[4:]:
                 fig.text(-0.15,currentYTextCoord, parameter, transform=ax.transAxes, ha='left', va='top',  fontsize=8)
                 currentYTextCoord -= 0.025
             legends = parameterStrings[2].split("~")
@@ -53,5 +55,22 @@ for folder in os.listdir(searchPath):
             os.remove(fileName + 'linePlot.txt')
             count+= 1
         os.chdir(current)
-
+if len(persistData) != 0:
+    currentPlottingCount = 1
+    totalPlottingCount = 0
+    while totalPlottingCount < len(persistData):
+        fig, ax = plt.subplots()
+        ax.set_title("Combined Energy Plots")
+        ax.set_ylabel("Energy")
+        ax.set_xlabel("Radius")
+        endCount = totalPlottingCount + 5
+        if totalPlottingCount+5 > len(persistData)-1:
+            endCount = len(persistData)-1
+        for dataTriples in persistData[totalPlottingCount:endCount]:
+            ax.plot(dataTriples[1], dataTriples[2], label = dataTriples[0])
+        ax.legend(loc='upper left')
+        fig.savefig(os.path.join(searchPath, 'combinedEnergy' +str(currentPlottingCount)+ '.png'))
+        currentPlottingCount += 1
+        totalPlottingCount += 5
+    count += 1
 print("Done, " , count , " .txt files converted to .png.")
