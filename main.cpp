@@ -10,23 +10,28 @@ int main(int, char **)
 
     // To use, populate parameterList with parameters of surfaces to be calculated, then call batchGen to calcuate them
 
+
+    // Here is an example of generating 100 surfaces with varied parameters
     std::vector<ShellParams> parameterList;
     BatchGen massCalcer;
-
-    for (int i=0; i < 10; i++) {
-        for (int j=0; j < 10;j++) {
+    for (int j = 0; j < 10; j++)
+    {
+        for (int i = 0; i < 10; i++)
+        {
             ShellParams parameters;
-            parameters.surfaceIndex = 10*i+j;
-            parameters.bendingStiffness = 100 + 990*double(j);
-            parameters.desiredCurvature = -1 - 0.25 *double(i);
+            parameters.surfaceIndex = 10 * i + j;
+            parameters.bendingStiffness = 100 + 990 * double(j);//double(j);
+            parameters.desiredCurvature = -1 - 0.25 * double(i);
+            parameters.radialStiffness = 10;
             parameterList.push_back(parameters);
         }
     }
 
-
     // Push parameters to the parameterList
 
     massCalcer.calculateAll(parameterList);
+
+    //Code to run a single surface generation
 
     // ShellParams parameters;
     // parameters.expansions = 50;

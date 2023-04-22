@@ -57,16 +57,19 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
     bool bendEnergy = true;
     bool springEnergy = true;
     bool sharpBendPenalty = false;
+    bool radialBendEnergy = false;
 
     double totalEnergy = 0;
     double totalLength = 0;
     double totalBendingEnergy = 0;
+    double totalRadialBendingEnergy = 0;
     double totalSpringEnergy = 0;
     double sharpBendEnergy = 0;
 
     VectorXd lengthDerivs(curveSize);
     VectorXd springDerivs(curveSize);
     VectorXd bendDerivs(curveSize);
+    VectorXd radialBendDerivs(curveSize);
     VectorXd sharpBendPenaltyDerivs(curveSize);
 
     Vector3d prev2Vec, prevVec, currentVec, nextVec, next2Vec;
@@ -102,8 +105,10 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
         double prevLength = (prevVec - currentVec).norm();
         // Bending contributions
         totalBendingEnergy += m_parameters.bendingStiffness * bendingEnergy(prevVec, currentVec, nextVec);
+        totalRadialBendingEnergy += m_parameters.radialStiffness * bendingEnergy(m_prevCurve[outerCurveIndex] - m_binormals[outerCurveIndex] * m_parameters.extensionLength, m_prevCurve[outerCurveIndex], currentVec);
         bendDerivs[outerCurveIndex] += (bendEnergy) ? m_parameters.bendingStiffness * (bendingEnergyDeriv(currentVec, nextVec, next2Vec, currentDeriv, zeroVec, zeroVec) + bendingEnergyDeriv(prevVec, currentVec, nextVec, zeroVec, currentDeriv, zeroVec) + bendingEnergyDeriv(prev2Vec, prevVec, currentVec, zeroVec, zeroVec, currentDeriv)) : 0;
-
+        radialBendDerivs[outerCurveIndex] += (radialBendEnergy) ? m_parameters.radialStiffness * bendingEnergyDeriv(m_prevCurve[outerCurveIndex] - m_binormals[outerCurveIndex] * m_parameters.extensionLength, m_prevCurve[outerCurveIndex], currentVec, zeroVec, zeroVec, currentDeriv) : 0;
+        
         // Length contributions
         totalLength += prevLength;
         lengthDerivs[outerCurveIndex] = (lengthEnergy) ? normDiffDeriv(prevVec, currentVec, zeroVec, currentDeriv) + normDiffDeriv(nextVec, currentVec, zeroVec, currentDeriv) : 0;
@@ -136,7 +141,21 @@ double EnergyFunction::operator()(const VectorXd &inputs, VectorXd &derivatives)
     if (bendEnergy)
     {
         derivatives += bendDerivs;
-        totalEnergy += totalBendingEnergy;
+        if (m_parameters.offsetNeeded) {
+            totalEnergy += 2*totalBendingEnergy;
+        } else {
+            totalEnergy += totalBendingEnergy;
+        }
+        
+    }
+    if (radialBendEnergy) {
+        derivatives += radialBendDerivs;
+        if (m_parameters.offsetNeeded) {
+            totalEnergy += 2*totalRadialBendingEnergy;
+        } else {
+            totalEnergy += totalRadialBendingEnergy;
+        }
+        
     }
     if (sharpBendPenalty)
     {

@@ -5,8 +5,8 @@ import matplotlib.colors as colors
 from math import pi
 from scipy.interpolate import interp1d
 import warnings
-warnings.filterwarnings("ignore", message="The get_cmap function was deprecated in Matplotlib 3.7 and will be removed two minor releases later")
-
+import warnings
+warnings.filterwarnings("ignore")
 current = os.getcwd()
 searchPath = os.path.join(current, "Surfaces")
 count = 0
@@ -66,9 +66,7 @@ for folder in os.listdir(searchPath):
                 newThetas = np.linspace(0, 2*np.pi, longestLength)
                 interpolationFunction = interp1d(thetas, np.array(polarDataList), kind = 'cubic')
                 interpolatedPolarData = interpolationFunction(newThetas)
-                print(np.mean(interpolatedPolarData))
                 interpolatedPolarDatas.append(interpolatedPolarData)
-
             if parameterStrings[3] == "1":
                 q1, q3 = np.percentile(allPolarData, [25,75])
                 iqr = q3 - q1
@@ -76,15 +74,13 @@ for folder in os.listdir(searchPath):
                 upper_bound = q3 + threshold*iqr
                 lower_bound = q1 - threshold*iqr
                 interpolatedPolarDatas = np.clip(np.array(interpolatedPolarDatas), lower_bound, upper_bound)
+                
             
             thetaValuesFinal = np.linspace(0, 2*np.pi, len(surface[-1]), endpoint = False)
             theta, r = np.meshgrid(thetaValuesFinal, radiusData)
             z = np.array(interpolatedPolarDatas)
-            print(parameterStrings, np.mean(z))
             fig = plt.figure(figsize=(5,6))
             ax1 = fig.add_subplot(111, projection='polar')
-            ax1.grid(False)
-            ax1.set_rgrids([])
             ax1.set_thetagrids([])
             ax1.set_rorigin(radiusData[0])
             currentYTextCoord = 1.2
@@ -97,8 +93,9 @@ for folder in os.listdir(searchPath):
             cbar1.set_label(parameterStrings[1])
             ax1.set_title(parameterStrings[0])
             fig.savefig(os.path.join(fullInputPath, fileName + '.png'))
-            os.remove(fileName + 'polarPlot.txt')
+            #os.remove(fileName + 'polarPlot.txt')
             count+= 1
         os.chdir(current)
+
 
 print("Done, " , count , " .txt files converted to .png.")

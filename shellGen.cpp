@@ -49,8 +49,6 @@ bool ShellGen::expandCurve()
 
     double angleChange = 2 * M_PI / nextRingSize;
 
-    // Keep to remove the need to have an initial expansion before the normal growth
-    // Should change nothing
     for (int i = 0; i < nextRingSize; i++)
     {
         double pointParameter = 2 * M_PI * double(i) / double(nextRingSize);
@@ -97,24 +95,30 @@ bool ShellGen::expandCurve()
     LBFGSpp::LBFGSSolver<double> solver(param);
     double energy;
     std::srand((unsigned int)time(0));
-    VectorXd input = 0.001* VectorXd::Random(nextRingSize);
+    VectorXd input = 0.1* VectorXd::Random(nextRingSize);
     VectorXd derivatives = VectorXd::Zero(nextRingSize);
-    // for (int ignore = 0; ignore < nextRingSize; ignore++) {
-    //     //input[ignore] += 0.01 * std::cos(double(m_parameters.period) * double(ignore)/double(nextRingSize) * M_PI * 2);
-    // }
 
     // Used to make a linear approx. of the derivative for testing
-    // VectorXd inputChanged = input;
-    // double h = 0.00000001;
-    // inputChanged[10] += h;
-    // double energy2;
-    // energy2 = energyFunctional(inputChanged, derivatives);
-    // energy = energyFunctional(input, derivatives);
-    // std::cout << "Approx: " << (energy2 - energy)/h<< std::endl;
-    // std::cout << "Real: " << derivatives[10] << std::endl;
-    // double tempEnergyComp = ((energy2 - energy)/h)/derivatives[10];
-    // std::cout << "Resolution: " << m_parameters.resolution << " NextRingSize: " << nextRingSize << " Energy Ratio: " <<((energy2 - energy)/h)/derivatives[10] << std::endl;
-
+    VectorXd inputChanged = input;
+    double h = 0.00000001;
+    inputChanged[10] += h;
+    double energy2;
+    energy2 = energyFunctional(inputChanged, derivatives);
+    energy = energyFunctional(input, derivatives);
+    double tempEnergyComp = ((energy2 - energy)/h)/derivatives[10];
+    if (std::abs(tempEnergyComp - 1) > 0.1){
+        // std::cout << "Offset change" << std::endl;
+        if (m_parameters.offsetNeeded) {
+            m_parameters.offsetNeeded = false;
+        } else {
+            m_parameters.offsetNeeded = true;
+        }
+        //Fake extension, not actually adding a curve
+        m_parameters.expansions += 1;
+        return true;
+        //Redo calculation just with offset enabled
+    } 
+    
     // std::cout << derivatives.transpose() << std::endl;
     try
     {
@@ -123,13 +127,13 @@ bool ShellGen::expandCurve()
         if (iterCount == 200)
         {
             // m_parameters.extensionLength *= 0.5;
-            std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
+            //std::cout << "Max iterations reached, halving extension length and trying again." << std::endl;
             success = true;
         }
     }
     catch (...)
     {
-        std::cout << "Energy increased in minimisation, continuing." << std::endl;
+        //std::cout << "Energy increased in minimisation, continuing." << std::endl;
         // return false;
     }
 
@@ -305,10 +309,29 @@ void ShellGen::printSurface()
 
     if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
     {
+        std::vector<std::vector<double>> verticalDisplacements;
+        for (int currentCurve = 1; currentCurve < m_surface.getCurveCount(); currentCurve++)
+        {
+            std::vector<double> currentVerticalDisplacements;
+            for (int i = m_surface.curveStartIndex(currentCurve - 1); i < m_surface.curveStartIndex(currentCurve); i++)
+            {
+                Vector3d surfacePoint = m_surface.getPos(i);
+                currentVerticalDisplacements.push_back(surfacePoint[2] / m_parameters.radius);
+            }
+            verticalDisplacements.push_back(currentVerticalDisplacements);
+        }
+        PolarGraphOutputter vdispPlotter(m_outputDirectory, "VerticalDisplacementGraph", "Vertical Difference Values", "$\\tilde{z}_i^k$", "jet", m_parameters);
+        vdispPlotter.addRValues(clippedRadii2);
+        vdispPlotter.addData(verticalDisplacements);
+        vdispPlotter.writeData();
+    }
+
+    if (m_surface.getCurveCount() > 2 && !m_parameters.saveEveryFrame)
+    {
         int totalCurves = m_surface.getCurveCount();
         LineGraphOutputter lengthCurvePlotter(m_outputDirectory, "energyProfile", "Ring Energies", "$\\tilde{R}^k$", "$\\frac{\\tilde{E}^k}{n^k}$", m_parameters);
         lengthCurvePlotter.addXValues(clippedRadii2);
-        lengthCurvePlotter.addData(m_recordedEnergies, "Energy");
+        lengthCurvePlotter.addData(m_recordedEnergies, "");
         lengthCurvePlotter.writeData();
     }
 

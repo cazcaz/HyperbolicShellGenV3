@@ -40,8 +40,7 @@ void PolarGraphOutputter::writeData()
                   << "Res: " << m_parameters.resolution << std::endl
                   << "Exp: " << m_parameters.expansions << std::endl
                   << "Len: " << m_parameters.extensionLength / m_parameters.resolution << std::endl
-                  << "BS: " << m_parameters.bendingStiffness / (m_parameters.springCoeff * std::pow(m_parameters.radius, 3)) << std::endl
-                  << "DC:" << m_parameters.desiredCurvature / std::pow(m_parameters.radius, 2) << std::endl
+                  << "(" << m_parameters.bendingStiffness / (m_parameters.springCoeff * std::pow(m_parameters.radius,3)) << ", " << m_parameters.radialStiffness / (m_parameters.springCoeff * std::pow(m_parameters.radius,3)) << ", " << m_parameters.desiredCurvature * std::pow(m_parameters.radius,2) << ")" << std::endl
                   << "?";
     for (int rIndex = 0; rIndex < m_RValues.size(); rIndex++)
     {
